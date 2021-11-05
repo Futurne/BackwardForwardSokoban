@@ -1,2 +1,3 @@
 gym-sokoban/
 */__pycache__/
+*.swp
