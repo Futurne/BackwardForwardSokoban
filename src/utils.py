@@ -5,14 +5,34 @@ import numpy as np
 from variables import TYPE_LOOKUP
 
 
-def print_board(board: np.array):
+def print_board(board: np.array, player: np.array=None):
     """Print the board in a human-readable way.
     """
-    print(*board, sep='\n')
+    if player is not None:
+        coords_player = tuple(player)
+
+    for x in range(len(board)):
+        for y in range(len(board[0])):
+            if player is not None and coords_player == (x, y):
+                print(TYPE_LOOKUP['player'], end=' ')
+            elif board[x, y] == TYPE_LOOKUP['empty space']:
+                print(' ', end=' ')
+            else:
+                print(board[x, y], end=' ')
+        print('\n', end='')
 
 
-def build_board_from_raw(raw_board: np.array) -> np.array:
+def yield_neightbours(cell: (int, int)):
+    """Yields all the neightbours around the cell.
+    """
+    x, y = cell
+    for n in [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]:
+        yield n
+
+
+def build_board_from_raw(raw_board: np.array) -> (np.array, np.array):
     """Merge the differents layers of the raw board into a single 2D board.
+    Also returns the player coordinates.
 
     The number corresponding of each type of cell is given by `variables.TYPE_LOOKUP`.
     """
@@ -24,7 +44,9 @@ def build_board_from_raw(raw_board: np.array) -> np.array:
     board += (goals & boxes) * TYPE_LOOKUP['box on target']  # Find boxes and target
     board += ((goals ^ boxes) & goals) * TYPE_LOOKUP['box target']  # Find target without boxes
     board += ((boxes ^ goals) & boxes) * TYPE_LOOKUP['box not on target']  # Find boxes without target
-    return board
+
+    player_coords = np.argwhere(player == 1)[0]
+    return board, player_coords
 
 
 def find_neightbours(cell: tuple, available_cells: set[tuple]) -> list[tuple]:
@@ -36,12 +58,13 @@ def find_neightbours(cell: tuple, available_cells: set[tuple]) -> list[tuple]:
     to_visit = [cell]  # LIFO
 
     while to_visit:
-        x, y = to_visit.pop()
-        for n in [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]:
+        cell = to_visit.pop()
+        for n in yield_neightbours(cell):
             if n in available_cells:
                 neightbours.append(n)
                 to_visit.append(n)
                 available_cells.remove(n)
+
     return neightbours
 
 
@@ -57,7 +80,7 @@ def connectivity(board: np.array) -> list[set]:
         (board == TYPE_LOOKUP['box target'])
     )
     # Transforms the numpy array into a set of tuples
-    available_cells = set((c[0], c[1]) for c in available_cells)
+    available_cells = set(tuple(c) for c in available_cells)
     neightbours = []
 
     while available_cells:
@@ -72,7 +95,7 @@ if __name__ == '__main__':
     from gym_sokoban.envs import sokoban_env
     env = sokoban_env.SokobanEnv((10, 10), num_boxes=2)
     raw = env.reset(render_mode='raw')
-    board = build_board_from_raw(raw)
+    board, _ = build_board_from_raw(raw)
     print_board(board)
     n = connectivity(board)
     print(len(n))
