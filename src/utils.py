@@ -49,13 +49,18 @@ def build_board_from_raw(raw_board: np.array) -> (np.array, np.array):
     return board, player_coords
 
 
-def find_neightbours(cell: tuple, available_cells: set[tuple]) -> list[tuple]:
+def find_neightbours(cell: tuple, available_cells: set[tuple], remove_cells: bool) -> list[tuple]:
     """Find all neightbours in the `available_cells`.
 
-    Return those neightbours and remove them from the `available_cells` set.
+    If the :remove_cells: parameter is True, then all found neightbours
+    will be removed from :available_cells:.
+    Return those neightbours.
     """
     neightbours = [cell]
     to_visit = [cell]  # LIFO
+
+    if not remove_cells:
+        available_cells = available_cells.copy()  # Do not modify original set
 
     while to_visit:
         cell = to_visit.pop()
@@ -85,7 +90,7 @@ def connectivity(board: np.array) -> list[set]:
 
     while available_cells:
         current_cell = available_cells.pop()
-        n = find_neightbours(current_cell, available_cells)
+        n = find_neightbours(current_cell, available_cells, True)
         neightbours.append(set(n))
 
     return neightbours

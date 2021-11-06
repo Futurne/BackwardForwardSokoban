@@ -78,8 +78,7 @@ def update_next_state(
     # Compute neightbours
     available = available_cells.copy()
     available.remove(tuple(box))  # Don't forget to remove the new box position before computations
-    available_cpy = available.copy()
-    neightbours = find_neightbours(player, available_cpy)  # Consume available_cpy
+    neightbours = find_neightbours(player, available, False)
 
     # Update lists and sets
     to_visit.append((board.copy(), neightbours, box))
@@ -87,7 +86,7 @@ def update_next_state(
     macro_states.append((board.copy(), player))
 
 
-def macro_moves(board: np.array, player: np.array, box: np.array) -> list[np.array]:
+def macro_moves(board: np.array, player: np.array, box: np.array) -> list[tuple]:
     """Compute all states reachable by moving the given `box`
     by the player.
     Return the list of all states reachable.
@@ -100,9 +99,8 @@ def macro_moves(board: np.array, player: np.array, box: np.array) -> list[np.arr
         (board == TYPE_LOOKUP['box target'])
     )
     available_cells = set(tuple(c) for c in available_cells)
-    available_cpy = available_cells.copy()
-    neightbours = find_neightbours(tuple(player), available_cpy)  # Consume available_cpy
-    available_cells.add(tuple(box))  # This set represent all free cells without the current box position
+    neightbours = find_neightbours(tuple(player), available_cells, False)
+    available_cells.add(tuple(box))  # This set represent all free cells, we omit the current box position
 
     visited = {board.data.tobytes()}
     to_visit = [(board.copy(), neightbours, box)]  # LIFO
