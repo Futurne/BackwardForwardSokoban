@@ -22,8 +22,8 @@ def print_board(board: np.array, player: np.array=None):
         print('\n', end='')
 
 
-def yield_neightbours(cell: (int, int)):
-    """Yields all the neightbours around the cell.
+def yield_neighbours(cell: (int, int)):
+    """Yields all the neighbours around the cell.
     """
     x, y = cell
     for n in [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]:
@@ -49,14 +49,14 @@ def build_board_from_raw(raw_board: np.array) -> (np.array, np.array):
     return board, player_coords
 
 
-def find_neightbours(cell: tuple, available_cells: set[tuple], remove_cells: bool) -> list[tuple]:
-    """Find all neightbours in the `available_cells`.
+def find_neighbours(cell: tuple, available_cells: set[tuple], remove_cells: bool) -> list[tuple]:
+    """Find all neighbours in the `available_cells`.
 
-    If the :remove_cells: parameter is True, then all found neightbours
+    If the :remove_cells: parameter is True, then all found neighbours
     will be removed from :available_cells:.
-    Return those neightbours.
+    Return those neighbours.
     """
-    neightbours = [cell]
+    neighbours = [cell]
     to_visit = [cell]  # LIFO
 
     if not remove_cells:
@@ -64,13 +64,13 @@ def find_neightbours(cell: tuple, available_cells: set[tuple], remove_cells: boo
 
     while to_visit:
         cell = to_visit.pop()
-        for n in yield_neightbours(cell):
+        for n in yield_neighbours(cell):
             if n in available_cells:
-                neightbours.append(n)
+                neighbours.append(n)
                 to_visit.append(n)
                 available_cells.remove(n)
 
-    return neightbours
+    return neighbours
 
 
 def connectivity(board: np.array) -> list[set]:
@@ -86,14 +86,50 @@ def connectivity(board: np.array) -> list[set]:
     )
     # Transforms the numpy array into a set of tuples
     available_cells = set(tuple(c) for c in available_cells)
-    neightbours = []
+    neighbours = []
 
     while available_cells:
         current_cell = available_cells.pop()
-        n = find_neightbours(current_cell, available_cells, True)
-        neightbours.append(set(n))
+        n = find_neighbours(current_cell, available_cells, True)
+        neighbours.append(set(n))
 
-    return neightbours
+    return neighbours
+
+
+def targets(board: np.array) -> int:
+    """
+    Return the number of boxes already packed on
+    target square.
+    """
+    return env.boxes_on_target
+
+
+def distance(board: np.array) -> int:
+    """
+    Return the total distance of the boxes from the targets.
+    This is a lower bound of the number of moves required.
+    """
+    total_distance = 0
+    boxes_pos = np.argwhere(board == TYPE_LOOKUP['box not on target'])
+    targets_pos = np.argwhere(board == TYPE_LOOKUP['box target']).tolist()
+
+    for box in boxes_pos:
+        distance_from_each_target = []
+        for target in targets_pos:
+            # Compute Manhattan distance with every empty target
+            distance_from_each_target.append(np.sum(abs(box - target)))
+        targets_pos.remove(targets_pos[np.argmin(distance_from_each_target)])
+        total_distance += np.min(distance_from_each_target)
+
+    return total_distance
+
+
+def gamma1(board: np.array, gamma: float) -> int:
+    return gamma**env.num_boxes
+
+
+def gamma2(board: np.array, gamma: float) -> int:
+    return gamma**(env.num_boxes-env.boxes_on_target)
 
 
 if __name__ == '__main__':
@@ -103,4 +139,8 @@ if __name__ == '__main__':
     board, _ = build_board_from_raw(raw)
     print_board(board)
     n = connectivity(board)
-    print(len(n))
+    t = targets(board)
+    d = distance(board)
+    g1 = gamma1(board, 0.99)
+    g2 = gamma1(board, 0.99)
+    print("\nConnectivity: {}\nBoxes on target: {}\nDistance: {}\nGamma1: {}\nGamma2: {}".format(len(n), t, d, g1, g2))
