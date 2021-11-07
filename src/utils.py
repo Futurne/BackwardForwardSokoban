@@ -125,12 +125,24 @@ def distance(board: np.array) -> int:
 
 
 def gamma1(board: np.array, gamma: float) -> int:
+    """
+    A crude estimate of the reward for solving the level.
+    """
     return gamma**env.num_boxes
 
 
 def gamma2(board: np.array, gamma: float) -> int:
+    """
+    A refined version of gamma1, taking into account the boxes already on target.
+    """
     return gamma**(env.num_boxes-env.boxes_on_target)
 
+
+def core_feature(board, gamma) -> list[float]:
+    """
+    Return a list of all the core features.
+    """
+    return [targets(board), distance(board), gamma1(board, gamma), gamma2(board, gamma), connectivity(board)]
 
 if __name__ == '__main__':
     from gym_sokoban.envs import sokoban_env
