@@ -6,7 +6,7 @@ but are much more efficient for the search tree.
 """
 import numpy as np
 
-from utils import find_neightbours, yield_neightbours, print_board
+from utils import find_neighbours, yield_neighbours, print_board
 from variables import TYPE_LOOKUP
 
 
@@ -75,13 +75,13 @@ def update_next_state(
     if board.data.tobytes() in visited:
         return  # We already visited this board
 
-    # Compute neightbours
+    # Compute neighbours
     available = available_cells.copy()
     available.remove(tuple(box))  # Don't forget to remove the new box position before computations
-    neightbours = find_neightbours(player, available, False)
+    neighbours = find_neighbours(player, available, False)
 
     # Update lists and sets
-    to_visit.append((board.copy(), neightbours, box))
+    to_visit.append((board.copy(), neighbours, box))
     visited.add(board.data.tobytes())
     macro_states.append((board.copy(), player))
 
@@ -99,17 +99,17 @@ def macro_moves(board: np.array, player: np.array, box: np.array) -> list[tuple]
         (board == TYPE_LOOKUP['box target'])
     )
     available_cells = set(tuple(c) for c in available_cells)
-    neightbours = find_neightbours(tuple(player), available_cells, False)
+    neighbours = find_neighbours(tuple(player), available_cells, False)
     available_cells.add(tuple(box))  # This set represent all free cells, we omit the current box position
 
     visited = {board.data.tobytes()}
-    to_visit = [(board.copy(), neightbours, box)]  # LIFO
+    to_visit = [(board.copy(), neighbours, box)]  # LIFO
     macro_states = list()
 
     while to_visit:
-        board, neightbours, box = to_visit.pop()
-        for player in yield_neightbours(box):
-            if not check_move(board, neightbours, player, box):
+        board, neighbours, box = to_visit.pop()
+        for player in yield_neighbours(box):
+            if not check_move(board, neighbours, player, box):
                 continue  # Illegal move
 
             n_board = apply_move(board, player, box)
