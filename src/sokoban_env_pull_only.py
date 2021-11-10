@@ -2,15 +2,18 @@ from gym_sokoban.envs.sokoban_env import SokobanEnv, CHANGE_COORDINATES
 
 from gym.spaces import Box
 from gym.spaces.discrete import Discrete
+from gym_sokoban.envs.room_utils import generate_room
+
+import numpy as np
 
 
 class PullSokobanEnv(SokobanEnv):
 
     def __init__(self,
-             dim_room=(10, 10),
-             max_steps=120,
-             num_boxes=3,
-             num_gen_steps=None):
+                 dim_room=(10, 10),
+                 max_steps=120,
+                 num_boxes=3,
+                 num_gen_steps=None):
 
         super(PullSokobanEnv, self).__init__(dim_room, max_steps, num_boxes, num_gen_steps)
         screen_height, screen_width = (dim_room[0] * 16, dim_room[1] * 16)
@@ -24,8 +27,9 @@ class PullSokobanEnv(SokobanEnv):
         self.reward_box_on_target = -1
         self.reward_finished = 10
         self.reward_last = 0
-        
+
         _ = self.reset()
+
 
     # Overwrite parent _push function
     def _push(self, action):
@@ -35,6 +39,31 @@ class PullSokobanEnv(SokobanEnv):
     def _check_if_all_boxes_on_target(self):
         are_all_boxes_off_targets = self.boxes_on_target == 0
         return are_all_boxes_off_targets
+
+    def reset(self, second_player=False, render_mode='rgb_array'):
+        try:
+            self.room_fixed, self.room_state, self.box_mapping = generate_room(
+                dim=self.dim_room,
+                num_steps=self.num_gen_steps,
+                num_boxes=self.num_boxes,
+                second_player=second_player
+            )
+        except (RuntimeError, RuntimeWarning) as e:
+            print("[SOKOBAN] Runtime Error/Warning: {}".format(e))
+            print("[SOKOBAN] Retry . . .")
+            return self.reset(second_player=second_player, render_mode=render_mode)
+
+        self.player_position = np.argwhere(self.room_state == 5)[0]
+        self.num_env_steps = 0
+        self.reward_last = 0
+        self.boxes_on_target = self.num_boxes
+
+        # Change target into boxes on target and boxes into empty space
+        self.room_state[self.room_state == 2] = 3
+        self.room_state[self.room_state == 4] = 1
+
+        starting_observation = self.render(render_mode)
+        return starting_observation
 
     def step(self, action, observation_mode='rgb_array'):
         assert action in ACTION_LOOKUP
@@ -54,7 +83,6 @@ class PullSokobanEnv(SokobanEnv):
 
         else:
             moved_player = self._move(action)
-
 
         self._calc_reward()
 
@@ -125,4 +153,3 @@ ACTION_LOOKUP = {
     7: 'move left',
     8: 'move right',
 }
-
