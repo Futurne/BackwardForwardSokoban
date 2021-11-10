@@ -17,12 +17,24 @@ class PullSokobanEnv(SokobanEnv):
         self.observation_space = Box(low=0, high=255, shape=(screen_height, screen_width, 3))
         self.boxes_are_on_target = [False] * num_boxes
         self.action_space = Discrete(len(ACTION_LOOKUP))
+
+        # Penalties and Rewards for reverse Sokoban
+        self.penalty_for_step = -0.1
+        self.penalty_box_off_target = 1
+        self.reward_box_on_target = -1
+        self.reward_finished = 10
+        self.reward_last = 0
         
         _ = self.reset()
 
-    # Overwrite parent _pull function
-    def _pull(self, action):
+    # Overwrite parent _push function
+    def _push(self, action):
         raise Exception("Can’t use push action in this mode")
+
+    # Actually OFF target, not on
+    def _check_if_all_boxes_on_target(self):
+        are_all_boxes_off_targets = self.boxes_on_target == 0
+        return are_all_boxes_off_targets
 
     def step(self, action, observation_mode='rgb_array'):
         assert action in ACTION_LOOKUP
