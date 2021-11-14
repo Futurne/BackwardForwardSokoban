@@ -28,7 +28,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
 
     def step(self, room_state: np.array):
         """Update the environment state.
-        
+
         Args
         ----
         :room_state: The new state of the environment.
@@ -54,7 +54,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
 
         return observation, self.reward_last, done, info
 
-    def moves(self):
+    def reachable_states(self):
         """Return all the states reachable by macro-moves.
         """
         raw = self.render(mode='raw')
@@ -64,14 +64,14 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
             (board == TYPE_LOOKUP['box not on target'])
         )
 
-        moves = []
+        states = []
         for box in boxes:
             # Generate all macro moves for this box
             for n_board, n_player in macro_moves(board, player, box):
                 n_board[tuple(n_player)] = TYPE_LOOKUP['player']  # Place the player
-                moves.append(n_board)  # Add the macro-move
+                states.append(n_board)  # Add the macro-move
 
-        return moves
+        return states
 
 
 if __name__ == '__main__':
