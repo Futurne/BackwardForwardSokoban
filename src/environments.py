@@ -80,5 +80,5 @@ if __name__ == '__main__':
     board, player = build_board_from_raw(raw)
     print_board(board, player)
 
-    moves = env.moves()
+    moves = env.reachable_states()
     print('Number of macro moves:', len(moves))
