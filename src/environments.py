@@ -67,7 +67,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         states = []
         for box in boxes:
             # Generate all macro moves for this box
-            for n_board, n_player in macro_moves(board, player, box):
+            for n_board, n_player in macro_moves(board, player, box, True):
                 n_board[tuple(n_player)] = TYPE_LOOKUP['player']  # Place the player
                 states.append(n_board)  # Add the macro-move
 

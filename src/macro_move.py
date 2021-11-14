@@ -17,7 +17,7 @@ FORBIDDEN = {
 }
 
 
-def check_move(
+def check_push(
     board: np.array,
     reachable_cells: list[tuple],
     player: (int, int),
@@ -35,13 +35,31 @@ def check_move(
 
     return True
 
+def check_pull(
+    board: np.array,
+    reachable_cells: list[tuple],
+    player: (int, int),
+    box: np.array,
+    ) -> bool:
+    """Check if the player can pull the box.
+    The player is supposed to be next to the box.
+    """
+    if player not in reachable_cells:  # Check if the box is reachable
+        return False
 
-def apply_move(
+    behind = np.array(player) - (box - player)
+    if board[tuple(behind)] in FORBIDDEN:  # Check if the move is legal
+        return False
+
+    return True
+
+
+def apply_push(
     board: np.array,
     player: (int, int),
     box: np.array,
     ) -> np.array:
-    """Move the box by the player next to it.
+    """Push the box by the player next to it.
     Returns the new board. Doesn't modify the given board.
 
     After this function, we can consider that the new
@@ -56,6 +74,31 @@ def apply_move(
 
     board[tuple(box)] = TYPE_LOOKUP['box target'] if board[tuple(box)] == TYPE_LOOKUP['box on target']\
             else TYPE_LOOKUP['empty space']
+
+    return board
+
+
+def apply_pull(
+    board: np.array,
+    player: (int, int),
+    box: np.array,
+    ) -> np.array:
+    """Pull the box by the player next to it.
+    Returns the new board. Doesn't modify the given board.
+
+    After this function, we can consider that the new
+    box and player positions are :player: and :behind:
+    respectively.
+    """
+    behind = np.array(player) - (box - player)
+    board = board.copy()
+
+    board[tuple(box)] = TYPE_LOOKUP['box target'] if board[tuple(box)] == TYPE_LOOKUP['box on target']\
+            else TYPE_LOOKUP['empty space']
+
+    board[tuple(player)] = TYPE_LOOKUP['box on target'] if board[tuple(player)] == TYPE_LOOKUP['box target']\
+            else TYPE_LOOKUP['box not on target']
+
     return board
 
 
@@ -86,13 +129,20 @@ def update_next_state(
     macro_states.append((board.copy(), player))
 
 
-def macro_moves(board: np.array, player: np.array, box: np.array) -> list[tuple]:
+def macro_moves(
+        board: np.array,
+        player: np.array,
+        box: np.array,
+        forward: bool,
+    )-> list[tuple]:
     """Compute all states reachable by moving the given `box`
     by the player.
     Return the list of all states reachable.
 
     Each state is the result of making mutiple legal move in the board
-    by the player when only moving or pushing the specified box.
+    by the player when only moving or pushing or pulling the specified box.
+
+    The player can either push or pull according to the :forward: parameter.
     """
     available_cells = np.argwhere(
         (board == TYPE_LOOKUP['empty space']) |\
@@ -109,11 +159,18 @@ def macro_moves(board: np.array, player: np.array, box: np.array) -> list[tuple]
     while to_visit:
         board, neighbours, box = to_visit.pop()
         for player in yield_neighbours(box):
-            if not check_move(board, neighbours, player, box):
-                continue  # Illegal move
+            if forward:
+                if not check_push(board, neighbours, player, box):
+                    continue  # Illegal move
 
-            n_board = apply_move(board, player, box)
-            n_box, player = box + (box - player), box  # New box and player positions
+                n_board = apply_push(board, player, box)
+                n_box, player = box + (box - player), box  # New box and player positions
+            else:
+                if not check_pull(board, neighbours, player, box):
+                    continue  # Illegal move
+
+                n_board = apply_pull(board, player, box)
+                n_box, player = np.array(player), np.array(player) - (box - player)  # New box and player positions
 
             update_next_state(
                 n_board,
@@ -137,10 +194,25 @@ if __name__ == '__main__':
 
     board, player = build_board_from_raw(raw)
     box = np.argwhere(raw[2] == 1)[0]
-
-    s = macro_moves(board, player, box)
+    s = macro_moves(board, player, box, True)
 
     print('MACRO MOVES:')
+    print('initial board:')
+    print_board(board, player)
+    print(f'Box considered: {box}\n\n')
+    print(f'Number of macro moves: {len(s)}')
+    print('List of macro moves')
+    for b, p in s:
+        print_board(b, p)
+        print('')
+
+
+    board[board == TYPE_LOOKUP['box not on target']] = TYPE_LOOKUP['empty space']
+    board[board == TYPE_LOOKUP['box target']] = TYPE_LOOKUP['box on target']
+    box = np.argwhere(board == TYPE_LOOKUP['box on target'])[0]
+    s = macro_moves(board, player, box, False)
+
+    print('\n\nMACRO MOVES BACKWARD:')
     print('initial board:')
     print_board(board, player)
     print(f'Box considered: {box}\n\n')
