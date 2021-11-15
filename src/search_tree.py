@@ -7,6 +7,7 @@ useful for the learning procedure.
 """
 from copy import deepcopy
 
+import torch
 from numpy.random import default_rng
 from numpy.random._generator import Generator
 
@@ -36,11 +37,13 @@ class Node:
         self.parent = parent
         self.env = env
         self.reward = reward
+        self.torch_reward = torch.FloatTensor([reward])
         self.done = done
 
         self.children = []
         self.value = 0
         self.torch_value = 0
+        self.never_updated = True
 
     def eval(self, model: BaseModel):
         """Update the value using the given :model: for the estimation.
@@ -72,6 +75,20 @@ class Node:
             return rng.choice(self.children)
         return max(self.children, key=lambda node: node.value)
 
+    def update_value(self, value: float):
+        """Update the value of the node and all the parents' node.
+        """
+        if self.parent:
+            self.parent.update_value(value)
+
+        # Always update when it's the first time
+        if self.never_updated:
+            self.value = value
+            self.never_updated = False
+            return
+
+        # Update only if the value is better than the previous updated value
+        self.value = min(self.value, value)
 
 
 class SearchTree:

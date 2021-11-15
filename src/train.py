@@ -23,4 +23,4 @@ def train_on_env(model: BaseModel, env: MacroSokobanEnv):
         # Compute loss
         loss = (target.detach() - leaf_node.torch_value).pow(2)
         # Update the new value estimate of the node and all its parents
-        leaf_node.update_value(target)
+        leaf_node.update_value(target.float())
