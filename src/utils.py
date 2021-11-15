@@ -144,6 +144,82 @@ def core_feature(board, gamma) -> list[float]:
     """
     return [targets(board), distance(board), gamma1(board, gamma), gamma2(board, gamma), connectivity(board)]
 
+def param_env_from_bord(board: np.array):
+    """
+    Return dim_room, max_steps, num_boxes, num_gen_steps in order to create
+    an environment adapted to the levels XSokoban and MicroSokoban using MacroSokobanEnv
+    """
+    
+    dim_room = board.shape
+    max_steps = 120
+    num_boxes =  np.count_nonzero(board == TYPE_LOOKUP['box target'])
+    num_gen_steps= None
+    
+    return dim_room, max_steps, num_boxes, num_gen_steps
+
+def XSokoban_lvl_to_raw(num_lvl:int) -> np.array:
+    """
+    Return board in raw format of a level of XSokoban
+    XSokoban levels bank from :
+    https://www.cs.cornell.edu/andru/xsokoban.html
+    """
+    TYPE_LOOKUP_XSOKOBAN = {
+        'wall': '#',
+        'empty space': ' ',
+        'box target': '.',
+        'box on target': '*',
+        'box not on target': '$',
+        'player': '@',
+    }
+    
+    file1 = open('levels/XSokoban/screen.'+str(num_lvl), 'r')
+    Lines = file1.readlines()
+    height, width = len(Lines),max([len(Lines[k]) for k in range(len(Lines))])-1
+    board = np.zeros((height, width))
+    k=0
+    for line in Lines:
+        L=[]
+        for elt in line:
+            for key,val in TYPE_LOOKUP_XSOKOBAN.items():
+                if elt == val:
+                    L.append(TYPE_LOOKUP[key])
+        board[k]=L+[TYPE_LOOKUP['wall'] for k in range(width-len(L))]
+        k+=1
+    return board
+
+
+def MicroSokoban_lvl_to_raw(num_lvl:int) -> np.array:
+    """
+    Return board in raw format of a level of MicroSokoban
+    MicroSokoban levels bank from :
+    http://www.abelmartin.com/rj/sokobanJS/Skinner/David%20W.%20Skinner%20-%20Sokoban_files/Microban.txt
+    """
+        
+    TYPE_LOOKUP_XSOKOBAN = {
+        'wall': '#',
+        'empty space': ' ',
+        'box target': '.',
+        'box on target': '*',
+        'box not on target': '$',
+        'player': '@',
+    }
+    
+    file1 = open('levels/MicroSokoban/screen.'+str(num_lvl), 'r')
+    Lines = file1.readlines()
+    height, width = len(Lines),max([len(Lines[k]) for k in range(len(Lines))])-1
+    board = np.zeros((height, width))
+    k=0
+    for line in Lines:
+        L=[]
+        for elt in line:
+            for key,val in TYPE_LOOKUP_XSOKOBAN.items():
+                if elt == val:
+                    L.append(TYPE_LOOKUP[key])
+        board[k]=L+[TYPE_LOOKUP['wall'] for k in range(width-len(L))]
+        k+=1
+    return board
+
+
 if __name__ == '__main__':
     from gym_sokoban.envs import sokoban_env
     env = sokoban_env.SokobanEnv((10, 10), num_boxes=2)
