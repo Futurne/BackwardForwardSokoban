@@ -154,7 +154,7 @@ def param_env_from_bord(board: np.array):
     max_steps = 120
     num_boxes =  np.count_nonzero(board == TYPE_LOOKUP['box target'])
     num_gen_steps= None
-    
+
     return dim_room, max_steps, num_boxes, num_gen_steps
 
 def XSokoban_lvl_to_raw(num_lvl:int) -> np.array:

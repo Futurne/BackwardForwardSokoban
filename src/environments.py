@@ -26,6 +26,11 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         ):
         super().__init__(dim_room, max_steps, num_boxes, num_gen_steps)
 
+    def render(self):
+        """Render only in 'raw' mode.
+        """
+        return super().render(mode='raw')
+
     def step(self, room_state: np.array):
         """Update the environment state.
 
