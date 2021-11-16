@@ -73,13 +73,14 @@ def find_neighbours(cell: tuple, available_cells: set[tuple], remove_cells: bool
     return neighbours
 
 
-def connectivity(board: np.array) -> list[set]:
+def connectivity(env) -> list[set]:
     """Find all group of cells that are freely walkable
     by the player.
 
     Return a list of set of cells. Each set contains
     the cells that can be reach by each other.
     """
+    board = env.room_state
     available_cells = np.argwhere(
         (board == TYPE_LOOKUP['empty space']) |\
         (board == TYPE_LOOKUP['box target'])
@@ -96,7 +97,7 @@ def connectivity(board: np.array) -> list[set]:
     return neighbours
 
 
-def targets(board: np.array) -> int:
+def targets(env) -> int:
     """
     Return the number of boxes already packed on
     target square.
@@ -104,11 +105,12 @@ def targets(board: np.array) -> int:
     return env.boxes_on_target
 
 
-def distance(board: np.array) -> int:
+def distance(env) -> int:
     """
     Return the total distance of the boxes from the targets.
     This is a lower bound of the number of moves required.
     """
+    board = env.room_state
     total_distance = 0
     boxes_pos = np.argwhere(board == TYPE_LOOKUP['box not on target'])
     targets_pos = np.argwhere(board == TYPE_LOOKUP['box target']).tolist()
@@ -124,25 +126,25 @@ def distance(board: np.array) -> int:
     return total_distance
 
 
-def gamma1(board: np.array, gamma: float) -> int:
+def gamma1(env, gamma: float) -> int:
     """
     A crude estimate of the reward for solving the level.
     """
     return gamma**env.num_boxes
 
 
-def gamma2(board: np.array, gamma: float) -> int:
+def gamma2(env, gamma: float) -> int:
     """
     A refined version of gamma1, taking into account the boxes already on target.
     """
     return gamma**(env.num_boxes-env.boxes_on_target)
 
 
-def core_feature(board, gamma) -> list[float]:
+def core_feature(env, gamma) -> list[float]:
     """
     Return a list of all the core features.
     """
-    return [targets(board), distance(board), gamma1(board, gamma), gamma2(board, gamma), connectivity(board)]
+    return [targets(env), distance(env), gamma1(env, gamma), gamma2(env, gamma), len(connectivity(env))]
 
 if __name__ == '__main__':
     from gym_sokoban.envs import sokoban_env
@@ -150,9 +152,5 @@ if __name__ == '__main__':
     raw = env.reset(render_mode='raw')
     board, _ = build_board_from_raw(raw)
     print_board(board)
-    n = connectivity(board)
-    t = targets(board)
-    d = distance(board)
-    g1 = gamma1(board, 0.99)
-    g2 = gamma1(board, 0.99)
-    print("\nConnectivity: {}\nBoxes on target: {}\nDistance: {}\nGamma1: {}\nGamma2: {}".format(len(n), t, d, g1, g2))
+    features = core_feature(env, 0.99)
+    print("\nConnectivity: {}\nBoxes on target: {}\nDistance: {}\nGamma1: {}\nGamma2: {}".format(features[0], features[1], features[2], features[3], features[4]))
