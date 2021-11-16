@@ -42,15 +42,6 @@ class Node:
 
         self.children = []
         self.parents = []
-        self.value = 0
-        self.torch_value = 0
-        self.never_updated = True
-
-    def eval(self, model: BaseModel):
-        """Update the value using the given :model: for the estimation.
-        """
-        self.torch_value = model.estimate(self.env.room_state)
-        self.value = self.torch_value.float()
 
     def expand(self, tree: SearchTree):
         """Expand all the possible children.
