@@ -58,12 +58,12 @@ class Node:
 
             # Does this state has already been visited before ?
             if board.data.tobytes() in tree.board_map:
-                # Do note create a new node, but connect the node to it's new parent
-                node = tree.board_map[board.data.tobytes()]
-            else:
-                # Create and add the new node to the board map
-                node = Node(env, reward, done)
-                tree.board_map[board.data.tobytes()] = node
+                # Do note create a new node
+                continue
+
+            # Create and add the new node to the board map
+            node = Node(env, reward, done)
+            tree.board_map[board.data.tobytes()] = node
 
             node.parents.append(self)
             self.children.append(node)
@@ -144,3 +144,24 @@ class SearchTree:
         while not leaf.done:
             yield leaf
             leaf = self.next_leaf(model)
+
+
+"""
+for leaf in tree.episode(model):
+    env = leaf.env
+    value = model.predict(env)
+    leaf.expand()
+    max_value = -inf
+    reward = 0
+
+    for child in leaf.children:
+        value_child = model.predic(child.env)
+        if value_child > max_value:
+            max_value = value_child
+            reward = child.reward
+
+    optimizer.zero_grad()
+    loss = (reward + gamma * max_value - value).pow(2)
+    loss.backward()
+    optimizer.step()
+"""
