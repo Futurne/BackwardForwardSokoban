@@ -5,6 +5,7 @@ and update each states values accordingly.
 The leaf can be choosen in an epsilon-greedy fashion,
 useful for the learning procedure.
 """
+import heapq  # priority queue
 from copy import deepcopy
 
 import torch
@@ -13,7 +14,7 @@ from numpy.random._generator import Generator
 
 from environments import MacroSokobanEnv
 from models import BaseModel
-from utils import build_board_from_raw
+from utils import build_board_from_raw, is_board_deadlock
 from variables import TYPE_LOOKUP
 
 
@@ -24,24 +25,27 @@ class Node:
     def __init__(
             self,
             env: MacroSokobanEnv,
+            parent: Node,
             reward: float,
             done: bool,
             ):
         """
         Args
         ----
-            :parent:    The parent node of this node. None if this node is the root node.
             :env:       Environment of this node.
+            :parent:    The parent node of this node. None if this node is the root node.
             :reward:    Reward obtained when reaching the state associated with this node.
             :done:      True if the state associated with this node is a final state.
         """
         self.env = env
+        self.parent = parent
         self.reward = reward
-        self.torch_reward = torch.FloatTensor([reward])
         self.done = done
 
+        self.depth = 1 + parent.depth if parent else 0  # How deep is the node in the tree
+        self.value = None
+        self.is_deadlock = is_board_deadlock(env.room_state)
         self.children = []
-        self.parents = []
 
     def expand(self, tree: SearchTree):
         """Expand all the possible children.
@@ -56,16 +60,16 @@ class Node:
             board, player = build_board_from_raw(raw)
             board[tuple(player)] = TYPE_LOOKUP['player']
 
-            # Does this state has already been visited before ?
-            if board.data.tobytes() in tree.board_map:
+            # Does this state has already been visited before?
+            if board.data.tobytes() in tree.boards:
                 # Do note create a new node
                 continue
 
-            # Create and add the new node to the board map
-            node = Node(env, reward, done)
-            tree.board_map[board.data.tobytes()] = node
+            # Create and add the new node to the boards and priority queue
+            node = Node(env, self, reward, done)
+            tree.boards.add(board.data.tobytes())
+            heapq.heappush(tree.priority_queue, node)
 
-            node.parents.append(self)
             self.children.append(node)
 
     def best_child(self, model: BaseModel, epsilon: float, rng: Generator):
@@ -73,7 +77,7 @@ class Node:
         Otherwise return a random child with a
         probability of epsilon.
 
-        The children are evaluated with the given model.
+        Only the non-deadlock children are considered.
 
         Can't be called if the node has no children.
         """
@@ -83,23 +87,35 @@ class Node:
             # Random node
             return rng.choice(self.children)
 
-        # Load features
-        batch_features = []
-        for node in self.children:
-            raw = node.env.render()
-            board, player = build_board_from_raw(raw)
-            board[tuple(player)] = TYPE_LOOKUP['player']
-            features = core_feature(board, gamma=0.9)
-            batch_features.append(torch.FloatTensor(features))
-        batch_features = torch.cat(batch_features)
+        valid_childs = [child for child in self.children
+                        if not child.is_deadlock]
+        return max(valid_childs, key=lambda: child: child.value)
 
-        # Predict values
-        with torch.no_grad():  # No need for gradient computations
-            batch_values = model(batch_features)
+    def backprop(self, gamma: float=1):
+        """Update this node's value based on its childs.
+        """
+        if self.children == []:
+            return  # Nothing to backprop
 
-        # Select best predicted child
-        best_child = torch.argmax(batch_values).item()
-        return self.children[best_child]
+        values = [child.reward + gamma * child.values
+                  for child in self.children]
+        self.value = max(values)
+
+    def deadlock_removal(self, tree: SearchTree):
+        """Declare this node as deadlock if it has only deadlock children.
+        Remove this node from the priority queue if it is a deadlock.
+        """
+        if all([child.is_deadlock for child in self.children]):
+            self.is_deadlock = True
+
+        if self.is_deadlock and self in tree.priority_queue:
+            tree.priority_queue.remove(self)
+
+    def __lt__(self, other: Node):
+        """Compare node's values.
+        Useful for the priority queue.
+        """
+        return self.value < other.value
 
 
 class SearchTree:
@@ -122,7 +138,8 @@ class SearchTree:
         self.rng = default_rng(seed)
 
         # A mapping between board_states and nodes of the tree
-        self.board_map = dict()
+        self.boards = {env.room_state.data.tobytes()}
+        self.priority_queue = [self.root]
 
     def next_leaf(self, model: BaseModel):
         """Start from the root node and follows the best
@@ -144,6 +161,21 @@ class SearchTree:
         while not leaf.done:
             yield leaf
             leaf = self.next_leaf(model)
+
+    def leafs(self):
+        """Return all leafs of the tree.
+        """
+        leafs = [node for node in self.board_map.values()
+                 if node.children == []]
+        return leafs
+
+    def backpropagate_values(self):
+        """Backpropagate all the leaf values up to the root node.
+        Make sure that every leafs of the tree has an updated value.
+        """
+        # Need to backpropagate the deepest nodes first!
+        for node in self.priority_queue[::-1]:
+            node.backprop()
 
 
 """

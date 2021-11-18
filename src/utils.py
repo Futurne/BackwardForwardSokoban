@@ -97,6 +97,12 @@ def connectivity(env) -> list[set]:
     return neighbours
 
 
+def is_board_deadlock(boad: np.array) -> bool:
+    """Return whether the board is a trivial deadlock or not.
+    """
+    raise RuntimeError('Not implemented')
+
+
 def targets(env) -> int:
     """
     Return the number of boxes already packed on
