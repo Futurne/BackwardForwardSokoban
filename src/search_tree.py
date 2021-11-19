@@ -170,7 +170,7 @@ class SearchTree:
     def leafs(self):
         """Return all leafs of the tree.
         """
-        leafs = [node for node in self.board_map.values()
+        leafs = [node for node in self.priority_queue
                  if node.children == []]
         return leafs
 
