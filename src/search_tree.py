@@ -69,8 +69,11 @@ class Node:
             node = Node(env, self, reward, done)
             tree.boards.add(board.data.tobytes())
             heapq.heappush(tree.priority_queue, node)
-
             self.children.append(node)
+
+        # Check for deadlocks
+        for child in self.children:
+            child.deadlock_removal()
 
     def best_child(self, model: BaseModel, epsilon: float, rng: Generator):
         """Return the best child with a probability 1 - epsilon.
@@ -110,6 +113,8 @@ class Node:
 
         if self.is_deadlock and self in tree.priority_queue:
             tree.priority_queue.remove(self)
+
+        self.parent.deadlock_removal(tree)
 
     def __lt__(self, other: Node):
         """Compare node's values.
