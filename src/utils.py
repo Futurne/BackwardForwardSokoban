@@ -3,6 +3,7 @@
 import numpy as np
 
 from variables import TYPE_LOOKUP
+from macro_moves import macro_moves
 
 
 def print_board(board: np.array, player: np.array=None):
@@ -97,10 +98,23 @@ def connectivity(env) -> list[set]:
     return neighbours
 
 
-def is_board_deadlock(boad: np.array) -> bool:
+def is_board_deadlock(board: np.array, player: np.array) -> bool:
     """Return whether the board is a trivial deadlock or not.
+    A trivial deadlock is a room where every accessible box cannot be pushed
+    and where the game is not finished.
     """
-    raise RuntimeError('Not implemented')
+    if (board != TYPE_LOOKUP['box target']).all():
+        return False  # The game is finished => no deadlocks
+
+    boxes = np.argwhere(
+        (board == TYPE_LOOKUP['box on target']) |\
+        (board == TYPE_LOOKUP['box not on target'])
+    )
+
+    for box in boxes:
+        if len(macro_moves(board, player, box, True)) > 0:
+            return True
+    return False
 
 
 def targets(env) -> int:
@@ -157,7 +171,6 @@ def param_env_from_bord(board: np.array):
     Return dim_room, max_steps, num_boxes, num_gen_steps in order to create
     an environment adapted to the levels XSokoban and MicroSokoban using MacroSokobanEnv
     """
-    
     dim_room = board.shape
     max_steps = 120
     num_boxes =  np.count_nonzero(board == TYPE_LOOKUP['box target'])
@@ -179,9 +192,9 @@ def XSokoban_lvl_to_raw(num_lvl:int) -> np.array:
         'box not on target': '$',
         'player': '@',
     }
-    
-    file1 = open('levels/XSokoban/screen.'+str(num_lvl), 'r')
-    Lines = file1.readlines()
+
+    with open('levels/XSokoban/screen.' + str(num_lvl), 'r') as file1:
+        Lines = file1.readlines()
     height, width = len(Lines),max([len(Lines[k]) for k in range(len(Lines))])-1
     board = np.zeros((height, width))
     k=0

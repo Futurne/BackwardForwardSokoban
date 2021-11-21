@@ -44,8 +44,11 @@ class Node:
 
         self.depth = 1 + parent.depth if parent else 0  # How deep is the node in the tree
         self.value = None
-        self.is_deadlock = is_board_deadlock(env.room_state)
         self.children = []
+
+        raw = env.render()
+        board, player = build_board_from_raw(raw)
+        self.is_deadlock = is_board_deadlock(board, player)
 
     def expand(self, tree: SearchTree):
         """Expand all the possible children.
@@ -61,13 +64,13 @@ class Node:
             board[tuple(player)] = TYPE_LOOKUP['player']
 
             # Does this state has already been visited before?
-            if board.data.tobytes() in tree.boards:
+            if raw.data.tobytes() in tree.boards:
                 # Do note create a new node
                 continue
 
             # Create and add the new node to the boards and priority queue
             node = Node(env, self, reward, done)
-            tree.boards.add(board.data.tobytes())
+            tree.boards.add(raw.data.tobytes())
             heapq.heappush(tree.priority_queue, node)
             self.children.append(node)
 
