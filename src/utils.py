@@ -3,7 +3,6 @@
 import numpy as np
 
 from variables import TYPE_LOOKUP
-from macro_moves import macro_moves
 
 
 def print_board(board: np.array, player: np.array=None):
@@ -98,24 +97,17 @@ def connectivity(env) -> list[set]:
     return neighbours
 
 
-def is_board_deadlock(board: np.array, player: np.array) -> bool:
+def is_env_deadlock(env) -> bool:
     """Return whether the board is a trivial deadlock or not.
     A trivial deadlock is a room where every accessible box cannot be pushed
     and where the game is not finished.
     """
+    raw = env.render()
+    board, _ = build_board_from_raw(raw)
     if (board != TYPE_LOOKUP['box target']).all():
         return False  # The game is finished => no deadlocks
 
-    boxes = np.argwhere(
-        (board == TYPE_LOOKUP['box on target']) |\
-        (board == TYPE_LOOKUP['box not on target'])
-    )
-
-    for box in boxes:
-        if len(macro_moves(board, player, box, True)) > 0:
-            return True
-    return False
-
+    return len(env.reachable_states()) == 0  # No possible moves
 
 def targets(env) -> int:
     """
@@ -130,7 +122,12 @@ def distance(env) -> int:
     Return the total distance of the boxes from the targets.
     This is a lower bound of the number of moves required.
     """
-    board = env.room_state
+    raw = env.render()
+    board, _ = build_board_from_raw(raw)
+
+    if (board != TYPE_LOOKUP['box target']).all():
+        return 0  # All box are placed
+
     total_distance = 0
     boxes_pos = np.argwhere(board == TYPE_LOOKUP['box not on target'])
     targets_pos = np.argwhere(board == TYPE_LOOKUP['box target']).tolist()

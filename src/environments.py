@@ -26,10 +26,13 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         ):
         super().__init__(dim_room, max_steps, num_boxes, num_gen_steps)
 
-    def render(self):
-        """Render only in 'raw' mode.
+        # List of all reachable states, saving for computation efficiency
+        self.states = None  # Default value, the computation has to be done once
+
+    def render(self, mode='raw'):
+        """Render in 'raw' mode by default.
         """
-        return super().render(mode='raw')
+        return super().render(mode=mode)
 
     def step(self, room_state: np.array):
         """Update the environment state.
@@ -62,6 +65,9 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
     def reachable_states(self):
         """Return all the states reachable by macro-moves.
         """
+        if self.states:
+            return self.states
+
         raw = self.render(mode='raw')
         board, player = build_board_from_raw(raw)
         boxes = np.argwhere(
@@ -73,10 +79,11 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         for box in boxes:
             # Generate all macro moves for this box
             for n_board, n_player in macro_moves(board, player, box, True):
-                n_board[tuple(n_player)] = TYPE_LOOKUP['player']  # Place the player
+                n_board[tuple(n_player)] = TYPE_LOOKUP['player']  # Place the player to create a valid room_state
                 states.append(n_board)  # Add the macro-move
 
-        return states
+        self.states = states  # Save the computations for future calls
+        return self.states
 
 
 if __name__ == '__main__':

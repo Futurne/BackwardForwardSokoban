@@ -9,12 +9,13 @@ import heapq  # priority queue
 from copy import deepcopy
 
 import torch
+import numpy as np
 from numpy.random import default_rng
 from numpy.random._generator import Generator
 
 from environments import MacroSokobanEnv
 from models import BaseModel
-from utils import build_board_from_raw, is_board_deadlock
+from utils import build_board_from_raw, is_env_deadlock
 from variables import TYPE_LOOKUP
 
 
@@ -25,7 +26,7 @@ class Node:
     def __init__(
             self,
             env: MacroSokobanEnv,
-            parent: Node,
+            parent,
             reward: float,
             done: bool,
             ):
@@ -48,21 +49,17 @@ class Node:
 
         raw = env.render()
         board, player = build_board_from_raw(raw)
-        self.is_deadlock = is_board_deadlock(board, player)
+        self.is_deadlock = is_env_deadlock(env)
 
-    def expand(self, tree: SearchTree):
+    def expand(self, tree):
         """Expand all the possible children.
         Their values are NOT evaluated.
         """
-        states = self.env.reachable_states()
-        for room_state in states:
+        for room_state in self.env.reachable_states():
             env = deepcopy(self.env)
             obs, reward, done, info = env.step(room_state)
 
-            raw = env.render()
-            board, player = build_board_from_raw(raw)
-            board[tuple(player)] = TYPE_LOOKUP['player']
-
+            raw = np.array(env.render())
             # Does this state has already been visited before?
             if raw.data.tobytes() in tree.boards:
                 # Do note create a new node
@@ -75,10 +72,16 @@ class Node:
             self.children.append(node)
 
         # Check for deadlocks
-        for child in self.children:
-            child.deadlock_removal()
+        if self.children:
+            for child in self.children:
+                child.deadlock_removal(tree)
+        else:
+            # This node couldn't expand to childs => he's useless
+            # This can happen if all its possible childs are already in the `tree.boards`
+            self.is_deadlock = True
+            self.deadlock_removal(tree)
 
-    def best_child(self, model: BaseModel, epsilon: float, rng: Generator):
+    def best_child(self, epsilon: float, rng: Generator):
         """Return the best child with a probability 1 - epsilon.
         Otherwise return a random child with a
         probability of epsilon.
@@ -95,7 +98,7 @@ class Node:
 
         valid_childs = [child for child in self.children
                         if not child.is_deadlock]
-        return max(valid_childs, key=lambda: child: child.value)
+        return max(valid_childs, key=lambda child: child.value)
 
     def backprop(self, gamma: float=1):
         """Update this node's value based on its childs.
@@ -103,27 +106,31 @@ class Node:
         if self.children == []:
             return  # Nothing to backprop
 
-        values = [child.reward + gamma * child.values
+        values = [child.reward + gamma * child.value
                   for child in self.children]
         self.value = max(values)
 
-    def deadlock_removal(self, tree: SearchTree):
+    def deadlock_removal(self, tree):
         """Declare this node as deadlock if it has only deadlock children.
         Remove this node from the priority queue if it is a deadlock.
         """
-        if all([child.is_deadlock for child in self.children]):
+        # Update to deadlock state if all childs are in deadlock state
+        if self.children and all([child.is_deadlock for child in self.children]):
             self.is_deadlock = True
 
+        # Remove the node from the priority queue if necessary
         if self.is_deadlock and self in tree.priority_queue:
             tree.priority_queue.remove(self)
 
-        self.parent.deadlock_removal(tree)
+        # If in a deadlock state, try updating the parent node
+        if self.is_deadlock and self.parent:
+            self.parent.deadlock_removal(tree)
 
-    def __lt__(self, other: Node):
-        """Compare node's values.
+    def __lt__(self, other):
+        """Compare node's depth.
         Useful for the priority queue.
         """
-        return self.value < other.value
+        return self.depth < other.depth
 
 
 class SearchTree:
@@ -140,16 +147,16 @@ class SearchTree:
             model: BaseModel,
             seed: int,
             ):
-        self.root = Node(env, 0, False)
-        self.root.eval(model)
+        self.root = Node(env, None, 0, False)
         self.epsilon = epsilon
         self.rng = default_rng(seed)
 
         # A mapping between board_states and nodes of the tree
-        self.boards = {env.room_state.data.tobytes()}
+        raw = np.array(env.render())
+        self.boards = {raw.data.tobytes()}
         self.priority_queue = [self.root]
 
-    def next_leaf(self, model: BaseModel):
+    def next_leaf(self):
         """Start from the root node and follows the best
         child node until a leaf is reach.
         At each step, a random node can be choosen instead
@@ -157,18 +164,18 @@ class SearchTree:
         """
         leaf = self.root
         while leaf.children:
-            leaf = leaf.best_child(model, self.epsilon, self.rng)
+            leaf = leaf.best_child(self.epsilon, self.rng)
         return leaf
 
-    def episode(self, model: BaseModel):
+    def episode(self):
         """Play an episode. Yield the current leaf each time so
         an exterior model can expand them.
         The episode stops once a ending leaf is reach (leaf.done is True).
         """
-        leaf = self.next_leaf(model)
+        leaf = self.next_leaf()
         while not leaf.done:
             yield leaf
-            leaf = self.next_leaf(model)
+            leaf = self.next_leaf()
 
     def leafs(self):
         """Return all leafs of the tree.
@@ -177,31 +184,13 @@ class SearchTree:
                  if node.children == []]
         return leafs
 
-    def backpropagate_values(self):
+    def update_all_values(self, model: BaseModel):
         """Backpropagate all the leaf values up to the root node.
-        Make sure that every leafs of the tree has an updated value.
+        It makes sure that every leafs of the tree has an updated value.
         """
+        for leaf_node in self.leafs():
+            model.estimate(leaf_node, gamma=0.9)  # Eval leaf's value
+
         # Need to backpropagate the deepest nodes first!
         for node in self.priority_queue[::-1]:
             node.backprop()
-
-
-"""
-for leaf in tree.episode(model):
-    env = leaf.env
-    value = model.predict(env)
-    leaf.expand()
-    max_value = -inf
-    reward = 0
-
-    for child in leaf.children:
-        value_child = model.predic(child.env)
-        if value_child > max_value:
-            max_value = value_child
-            reward = child.reward
-
-    optimizer.zero_grad()
-    loss = (reward + gamma * max_value - value).pow(2)
-    loss.backward()
-    optimizer.step()
-"""
