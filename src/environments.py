@@ -16,6 +16,9 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
     in the environment is a macro-move.
     A macro-move is a serie of moves where
     only one box is pushed.
+
+    The reward is also changed. We only give a reward of +1
+    when the agent won the game.
     """
     def __init__(
         self,
@@ -48,9 +51,6 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         self.num_env_steps += 1
         self.room_state = room_state
 
-        # Calculate reward
-        self._calc_reward()
-
         # Compute returns
         done = self._check_if_done()
         observation = self.render(mode='raw')
@@ -59,6 +59,9 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         if done:
             info["maxsteps_used"] = self._check_if_maxsteps()
             info["all_boxes_on_target"] = self._check_if_all_boxes_on_target()
+
+        # Calculate reward
+        self.reward_last = int(info['all_boxes_on_target'])  # 1 if finished, else 0
 
         return observation, self.reward_last, done, info
 
