@@ -92,12 +92,13 @@ class Node:
         """
         assert len(self.children) > 0
 
-        if rng.random() < epsilon:
-            # Random node
-            return rng.choice(self.children)
-
         valid_childs = [child for child in self.children
                         if not child.is_deadlock]
+
+        if rng.random() < epsilon:
+            # Random node
+            return rng.choice(valid_childs)
+
         return max(valid_childs, key=lambda child: child.value)
 
     def backprop(self, gamma: float=1):
