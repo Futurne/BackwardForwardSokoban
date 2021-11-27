@@ -61,7 +61,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
             info["all_boxes_on_target"] = self._check_if_all_boxes_on_target()
 
         # Calculate reward
-        self.reward_last = int(info['all_boxes_on_target'])  # 1 if finished, else 0
+        self.reward_last = int(done and info['all_boxes_on_target'])  # 1 if finished, else 0
 
         return observation, self.reward_last, done, info
 
@@ -143,7 +143,7 @@ class BackwardSokobanEnv(sokoban_env.SokobanEnv):
             info["all_boxes_not_on_target"] = self._check_if_all_boxes_on_target()
 
         # Calculate reward
-        self.reward_last = int(info['all_boxes_not_on_target'])  # 1 if finished, else 0
+        self.reward_last = int(done and info['all_boxes_not_on_target'])  # 1 if won, else 0
 
         return observation, self.reward_last, done, info
 
