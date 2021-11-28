@@ -50,6 +50,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         # Apply movement
         self.num_env_steps += 1
         self.room_state = room_state
+        self.states = None  # Need to update the states!
 
         # Compute returns
         done = self._check_if_done()
@@ -68,7 +69,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
     def reachable_states(self):
         """Return all the states reachable by macro-moves.
         """
-        if self.states:
+        if self.states:  # States already computed
             return self.states
 
         raw = self.render(mode='raw')
@@ -132,6 +133,7 @@ class BackwardSokobanEnv(sokoban_env.SokobanEnv):
         # Apply movement
         self.num_env_steps += 1
         self.room_state = room_state
+        self.states = None  # Need to update the states!
 
         # Compute returns
         done = self._check_if_done()
@@ -187,7 +189,7 @@ class BackwardSokobanEnv(sokoban_env.SokobanEnv):
         )) > 0
         return not any_box_on_target
 
-    def reset(self, render_mode: str='raw') -> np.array:
+    def reset(self, render_mode: str='raw', second_player=None) -> np.array:
         """Same reset method as the super class,
         but the initialization is changed: all boxes are placed on the targets.
         """
