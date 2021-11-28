@@ -58,16 +58,14 @@ class Node:
         for room_state in self.env.reachable_states():
             env = deepcopy(self.env)
             obs, reward, done, info = env.step(room_state)
-
-            raw = np.array(env.render())
             # Does this state has already been visited before?
-            if raw.data.tobytes() in tree.boards:
+            if tree.is_visited_already(env):
                 # Do note create a new node
                 continue
 
             # Create and add the new node to the boards and priority queue
             node = Node(env, self, reward, done)
-            tree.boards.add(raw.data.tobytes())
+            tree.add_to_visited(env)
             heapq.heappush(tree.priority_queue, node)
             self.children.append(node)
 
@@ -151,10 +149,10 @@ class SearchTree:
         self.root = Node(env, None, 0, False)
         self.epsilon = epsilon
         self.rng = default_rng(seed)
+        self.visited = set()
 
-        # A mapping between board_states and nodes of the tree
+        self.add_to_visited(self.root.env)
         raw = np.array(env.render())
-        self.boards = {raw.data.tobytes()}
         self.priority_queue = [self.root]
 
     def next_leaf(self):
@@ -195,3 +193,35 @@ class SearchTree:
         # Need to backpropagate the deepest nodes first!
         for node in self.priority_queue[::-1]:
             node.backprop()
+
+    @staticmethod
+    def _board_to_str(board: np.array) -> str:
+        """Util function to create a string
+        based on the board. Each cell value is a word.
+        """
+        board = [
+            str(cell)
+            for row in board
+            for cell in row
+        ]
+        board = ' '.join(board)  # str representation
+        return board
+
+    def add_to_visited(self, env: MacroSokobanEnv):
+        """Add the node to the visited nodes' set.
+
+        The hash function is turning the board into a long
+        string of each cells.
+        """
+        board = SearchTree._board_to_str(env.room_state)
+        self.visited.add(board)
+
+    def is_visited_already(self, env: MacroSokobanEnv) -> bool:
+        """Return whether this node has already been visited
+        or not.
+
+        A node is visited if it has been noticed to the tree using
+        the `SearchTree.add_to_visited` method.
+        """
+        board = SearchTree._board_to_str(env.room_state)
+        return board in self.visited
