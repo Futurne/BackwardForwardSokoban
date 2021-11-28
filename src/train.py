@@ -69,7 +69,7 @@ if __name__ == '__main__':
     from utils import core_feature, print_board, build_board_from_raw
     from environments import BackwardSokobanEnv
 
-    env = BackwardSokobanEnv(dim_room=(10, 10), num_boxes=3)
+    env = BackwardSokobanEnv(dim_room=(6, 6), num_boxes=2)
     feat = core_feature(env, 0.9)
     model = LinearModel(len(feat))
 

@@ -103,8 +103,8 @@ def is_env_deadlock(env) -> bool:
     and where the game is not finished.
     """
     raw = env.render()
-    board, _ = build_board_from_raw(raw)
-    if (board != TYPE_LOOKUP['box target']).all():
+    board, p = build_board_from_raw(raw)
+    if env._check_if_done():
         return False  # The game is finished => no deadlocks
 
     return len(env.reachable_states()) == 0  # No possible moves
