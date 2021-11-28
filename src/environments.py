@@ -184,10 +184,8 @@ class BackwardSokobanEnv(sokoban_env.SokobanEnv):
         """
         raw = self.render(mode='raw')
         board, _ = build_board_from_raw(raw)
-        any_box_on_target = len(np.where(
-            board == TYPE_LOOKUP['box on target']
-        )) > 0
-        return not any_box_on_target
+        box_on_target_count = np.sum(board == TYPE_LOOKUP['box on target'])
+        return box_on_target_count == 0
 
     def reset(self, render_mode: str='raw', second_player=None) -> np.array:
         """Same reset method as the super class,
