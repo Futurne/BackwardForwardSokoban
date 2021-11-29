@@ -47,8 +47,6 @@ class Node:
         self.value = None
         self.children = []
 
-        raw = env.render()
-        board, player = build_board_from_raw(raw)
         self.is_deadlock = is_env_deadlock(env)
 
     def expand(self, tree):
@@ -150,6 +148,7 @@ class SearchTree:
         self.epsilon = epsilon
         self.rng = default_rng(seed)
         self.visited = set()
+        self.last_leaf = None  # Final leaf of the episode
 
         self.add_to_visited(self.root.env)
         raw = np.array(env.render())
@@ -175,6 +174,22 @@ class SearchTree:
         while not leaf.done:
             yield leaf
             leaf = self.next_leaf()
+
+        self.last_leaf = leaf
+
+    def solution_path(self):
+        """Return the solution path from the root node
+        to the last leaf used by the last episode.
+        """
+        assert self.last_leaf, "No episode has been done"
+
+        current_node = self.last_leaf
+        nodes = [current_node]
+        while current_node.parent:
+            current_node = current_node.parent
+            nodes = [current_node] + nodes
+
+        return nodes
 
     def leafs(self):
         """Return all leafs of the tree.

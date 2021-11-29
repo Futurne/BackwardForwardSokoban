@@ -39,17 +39,7 @@ def train_on_env(model: BaseModel, env: MacroSokobanEnv, config: dict):
     tree = SearchTree(env, epsilon, model, seed)
     model.estimate(tree.root, gamma)
 
-    print('Initial board:')
-    raw = tree.root.env.render()
-    board, player = build_board_from_raw(raw)
-    print_board(board, player)
-
     for leaf_node in tree.episode():
-        print('\nExpending leaf:')
-        raw = leaf_node.env.render()
-        board, player = build_board_from_raw(raw)
-        print_board(board, player)
-
         expand_node(tree, leaf_node, model)
 
         if leaf_node.children:
@@ -62,6 +52,8 @@ def train_on_env(model: BaseModel, env: MacroSokobanEnv, config: dict):
 
             # Backpropagate new model estimations
             tree.update_all_values(model)
+
+    return tree.solution_path()
 
 
 if __name__ == '__main__':
@@ -79,4 +71,8 @@ if __name__ == '__main__':
         'optimizer': torch.optim.Adam(model.parameters(), lr=1e-3),
     }
 
-    train_on_env(model, env, config)
+    solution = train_on_env(model, env, config)
+    print('Solution')
+    for node in solution:
+        node.env.print()
+        print('')

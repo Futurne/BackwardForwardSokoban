@@ -42,6 +42,13 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         """
         return super().render(mode=mode)
 
+    def print(self):
+        """Print the current environment.
+        """
+        raw = self.render()
+        board, player = build_board_from_raw(raw)
+        print_board(board, player)
+
     def reset(self, render_mode: str='raw', second_player=None) -> np.array:
         """Same reset method as the super class, except when in backward mode.
         In backward mode, we do the same reset method,
