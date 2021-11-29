@@ -58,7 +58,7 @@ def gamma2(env: MacroSokobanEnv, gamma: float) -> int:
         return gamma**env.boxes_on_target
 
 
-def core_feature(env: MacroSokobanEnv, gamma: float) -> list[float]:
+def core_features(env: MacroSokobanEnv, gamma: float) -> list[float]:
     """Return a list of all the core features.
     """
     return [

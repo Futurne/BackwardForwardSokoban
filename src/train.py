@@ -7,16 +7,25 @@ from environments import MacroSokobanEnv
 from search_tree import SearchTree, Node
 
 
-def expand_node(tree: SearchTree, node: Node, model: BaseModel):
+def expand_node(
+        tree: SearchTree,
+        node: Node,
+        model: BaseModel,
+        gamma: bool
+    ):
     """Expand the node and update all its children values.
     """
     node.expand(tree)  # Expand new nodes
     with torch.no_grad():
         for child in node.children:
-            model.estimate(child, gamma=0.9)  # Evaluate child's value
+            model.estimate(child, gamma=gamma)  # Evaluate child's value
 
 
-def compute_loss(model: BaseModel, node: Node):
+def compute_loss(
+        model: BaseModel,
+        node: Node,
+        gamma: bool
+    ):
     """Compute the loss for the given node prediction.
 
     It predicts the node's value, and compare it with its children.
@@ -24,7 +33,7 @@ def compute_loss(model: BaseModel, node: Node):
     """
     # Find the best child and compute loss
     best_child = max(node.children, key=lambda node: node.value)
-    prediction = model.estimate(node, gamma=0.9)  # Shape [1, 1]
+    prediction = model.estimate(node, gamma=gamma)  # Shape [1, 1]
     target = torch.FloatTensor([[best_child.value + best_child.reward]])  # Shape [1, 1]
     loss = (target - prediction).pow(2).sum()
     return loss
@@ -40,10 +49,10 @@ def train_on_env(model: BaseModel, env: MacroSokobanEnv, config: dict):
     model.estimate(tree.root, gamma)
 
     for leaf_node in tree.episode():
-        expand_node(tree, leaf_node, model)
+        expand_node(tree, leaf_node, model, gamma)
 
         if leaf_node.children:
-            loss = compute_loss(model, leaf_node)
+            loss = compute_loss(model, leaf_node, gamma)
 
             # Update model
             optimizer.zero_grad()
@@ -58,10 +67,11 @@ def train_on_env(model: BaseModel, env: MacroSokobanEnv, config: dict):
 
 if __name__ == '__main__':
     from models import LinearModel
-    from utils import core_feature, print_board, build_board_from_raw
+    from utils import print_board, build_board_from_raw
+    from features import core_features
 
     env = MacroSokobanEnv(forward=False, dim_room=(6, 6), num_boxes=2)
-    feat = core_feature(env, 0.9)
+    feat = core_features(env, 1)
     model = LinearModel(len(feat))
 
     config = {

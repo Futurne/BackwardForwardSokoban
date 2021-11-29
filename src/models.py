@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from utils import core_feature
+from features import core_features
 
 
 class BaseModel(nn.Module):
@@ -37,14 +37,16 @@ class BaseModel(nn.Module):
 class LinearModel(BaseModel):
     def __init__(self, n_features):
         super().__init__()
-
         self.linear = nn.Linear(n_features, 1)
 
     def forward(self, x):
         return self.linear(x)
 
     def estimate(self, node, gamma: float):
-        features = core_feature(node.env, gamma)
+        """Update the node's value and return the prediction.
+        It needs the gamma parameter for the features computations.
+        """
+        features = core_features(node.env, gamma)
         features = torch.FloatTensor(features).unsqueeze(dim=0)
         value = self(features)
         node.value = value[0].item()
