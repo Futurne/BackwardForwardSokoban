@@ -30,7 +30,7 @@ def compute_loss(model: BaseModel, node: Node):
     return loss
 
 
-def forward_train(model: BaseModel, env: MacroSokobanEnv, config: dict):
+def train_on_env(model: BaseModel, env: MacroSokobanEnv, config: dict):
     """Example of a training loop on a single environment.
     """
     epsilon, seed, gamma = config['epsilon'], config['seed'], config['gamma']
@@ -67,9 +67,8 @@ def forward_train(model: BaseModel, env: MacroSokobanEnv, config: dict):
 if __name__ == '__main__':
     from models import LinearModel
     from utils import core_feature, print_board, build_board_from_raw
-    from environments import BackwardSokobanEnv
 
-    env = BackwardSokobanEnv(dim_room=(6, 6), num_boxes=2)
+    env = MacroSokobanEnv(forward=False, dim_room=(6, 6), num_boxes=2)
     feat = core_feature(env, 0.9)
     model = LinearModel(len(feat))
 
@@ -80,4 +79,4 @@ if __name__ == '__main__':
         'optimizer': torch.optim.Adam(model.parameters(), lr=1e-3),
     }
 
-    forward_train(model, env, config)
+    train_on_env(model, env, config)
