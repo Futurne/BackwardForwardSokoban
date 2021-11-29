@@ -39,8 +39,6 @@ def build_board_from_raw(raw_board: np.array) -> (np.array, np.array):
     walls, goals, boxes, player = raw_board
     board = ((walls | goals | boxes) == 0) * TYPE_LOOKUP['empty space']
     board += (walls == 1) * TYPE_LOOKUP['wall']
-    # Do we need the player ? I think not
-    # board += player[player == 1] * TYPE_LOOKUP['player']
     board += (goals & boxes) * TYPE_LOOKUP['box on target']  # Find boxes and target
     board += ((goals ^ boxes) & goals) * TYPE_LOOKUP['box target']  # Find target without boxes
     board += ((boxes ^ goals) & boxes) * TYPE_LOOKUP['box not on target']  # Find boxes without target
@@ -80,7 +78,8 @@ def connectivity(env) -> list[set]:
     Return a list of set of cells. Each set contains
     the cells that can be reach by each other.
     """
-    board = env.room_state
+    raw = env.render()
+    board, _ = build_board_from_raw(raw)
     available_cells = np.argwhere(
         (board == TYPE_LOOKUP['empty space']) |\
         (board == TYPE_LOOKUP['box target'])
@@ -102,66 +101,11 @@ def is_env_deadlock(env) -> bool:
     A trivial deadlock is a room where every accessible box cannot be pushed
     and where the game is not finished.
     """
-    raw = env.render()
-    board, p = build_board_from_raw(raw)
     if env._check_if_done():
         return False  # The game is finished => no deadlocks
 
     return len(env.reachable_states()) == 0  # No possible moves
 
-def targets(env) -> int:
-    """
-    Return the number of boxes already packed on
-    target square.
-    """
-    return env.boxes_on_target
-
-
-def distance(env) -> int:
-    """
-    Return the total distance of the boxes from the targets.
-    This is a lower bound of the number of moves required.
-    """
-    raw = env.render()
-    board, _ = build_board_from_raw(raw)
-
-    if (board != TYPE_LOOKUP['box target']).all():
-        return 0  # All box are placed
-
-    total_distance = 0
-    boxes_pos = np.argwhere(board == TYPE_LOOKUP['box not on target'])
-    targets_pos = np.argwhere(board == TYPE_LOOKUP['box target']).tolist()
-
-    for box in boxes_pos:
-        distance_from_each_target = []
-        for target in targets_pos:
-            # Compute Manhattan distance with every empty target
-            distance_from_each_target.append(np.sum(abs(box - target)))
-        targets_pos.remove(targets_pos[np.argmin(distance_from_each_target)])
-        total_distance += np.min(distance_from_each_target)
-
-    return total_distance
-
-
-def gamma1(env, gamma: float) -> int:
-    """
-    A crude estimate of the reward for solving the level.
-    """
-    return gamma**env.num_boxes
-
-
-def gamma2(env, gamma: float) -> int:
-    """
-    A refined version of gamma1, taking into account the boxes already on target.
-    """
-    return gamma**(env.num_boxes-env.boxes_on_target)
-
-
-def core_feature(env, gamma) -> list[float]:
-    """
-    Return a list of all the core features.
-    """
-    return [targets(env), distance(env), gamma1(env, gamma), gamma2(env, gamma), len(connectivity(env))]
 
 def param_env_from_bord(board: np.array):
     """
