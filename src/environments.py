@@ -81,6 +81,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         self.num_env_steps += 1
         self.room_state = room_state
         self.states = None  # Need to update the states!
+        self._calc_reward()  # Update variables like `self.boxes_on_target`
 
         # Compute returns
         done = self._check_if_done()
