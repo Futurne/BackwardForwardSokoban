@@ -161,6 +161,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
 
         self.room_state = board
 
+
         fixed_values = {
             TYPE_LOOKUP['wall'],
             TYPE_LOOKUP['box target'],
@@ -181,6 +182,16 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
             self.room_fixed.append(n_row)
 
         self.room_fixed = np.array(self.room_fixed)
+
+        # Backward mode
+        if not self.forward:
+            # Place every boxes on target
+            self.room_state[self.room_state == TYPE_LOOKUP['box target']] = \
+                TYPE_LOOKUP['box on target']
+            self.room_state[self.room_state == TYPE_LOOKUP['box not on target']] = \
+                TYPE_LOOKUP['empty space']
+
+        self.boxes_on_target = (self.room_state == TYPE_LOOKUP['box on target']).sum()
 
 
 def param_env_from_board(board: np.array):
