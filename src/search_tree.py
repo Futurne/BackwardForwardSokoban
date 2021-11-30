@@ -171,9 +171,10 @@ class SearchTree:
         The episode stops once a ending leaf is reach (leaf.done is True).
         """
         leaf = self.next_leaf()
+        yield leaf
         while not leaf.done:
-            yield leaf
             leaf = self.next_leaf()
+            yield leaf
 
         self.last_leaf = leaf
 

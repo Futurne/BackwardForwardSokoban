@@ -1,9 +1,10 @@
 """Functions to compute the backward and forward features.
 Those features are used to train the basic linear model.
 """
+import numpy as np
 
 from environments import MacroSokobanEnv
-from utils import connectivity
+from utils import connectivity, build_board_from_raw
 from variables import TYPE_LOOKUP
 
 

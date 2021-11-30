@@ -34,7 +34,7 @@ def compute_loss(
     # Find the best child and compute loss
     best_child = max(node.children, key=lambda node: node.value)
     prediction = model.estimate(node, gamma=gamma)  # Shape [1, 1]
-    target = torch.FloatTensor([[best_child.value + best_child.reward]])  # Shape [1, 1]
+    target = torch.FloatTensor([[gamma * best_child.value + best_child.reward]])  # Shape [1, 1]
     loss = (target - prediction).pow(2).sum()
     return loss
 
