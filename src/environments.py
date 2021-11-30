@@ -5,6 +5,7 @@ import numpy as np
 from gym_sokoban.envs import sokoban_env
 
 from utils import print_board, build_board_from_raw
+from utils import MicroSokoban_lvl_to_raw, XSokoban_lvl_to_raw
 from variables import TYPE_LOOKUP
 from macro_move import macro_moves
 
@@ -29,13 +30,14 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         max_steps: int=120,
         num_boxes: int=4,
         num_gen_steps: int=None,
+        reset: bool=True,
         ):
         self.forward = forward
 
         # List of all reachable states, saving for computation efficiency
         self.states = None  # Default value, the computation has to be done once
 
-        super().__init__(dim_room, max_steps, num_boxes, num_gen_steps)
+        super().__init__(dim_room, max_steps, num_boxes, num_gen_steps, reset)
 
     def render(self, mode='raw'):
         """Render in 'raw' mode by default.
@@ -143,6 +145,91 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         the maximal steps have been reached.
         """
         return self._check_if_won() or self._check_if_maxsteps()
+
+    def _load_board(self, board: np.array):
+        """Save the board as the starting point for the environment.
+        Set all the depending variables accordingly.
+        """
+        assert self.dim_room == board.shape, "The board doesn't fit the instance parameters"
+
+        self.player_position = np.argwhere(board == TYPE_LOOKUP['player'])[0]
+        self.num_env_steps = 0
+        self.reward_last = 0
+        self.boxes_on_target = np.sum(board == TYPE_LOOKUP['box on target'])
+
+        self.room_state = board
+
+        fixed_values = {
+            TYPE_LOOKUP['walls'],
+            TYPE_LOOKUP['box target'],
+            TYPE_LOOKUP['empty space'],
+        }
+        self.room_fixed = np.array([
+            [
+                cell if cell in fixed_values else TYPE_LOOKUP['empty space']
+                for cell in row
+            ]
+            for row in board
+        ])
+
+
+def param_env_from_board(board: np.array):
+    """Return the SokobanEnv instance parameters,
+    computed from a specific board.
+
+    Do not give the value of `max_steps`.
+
+    Return
+    ------
+        :dim_room:      Tuple (width, height).
+        :num_boxes:     Number of boxes on the board.
+    """
+    dim_room = board.shape
+    num_boxes = np.sum(board == TYPE_LOOKUP['box on target']) + \
+            np.sum(board == TYPE_LOOKUP['box not on target'])
+    return dim_room, num_boxes
+
+
+def from_file(
+        dataset_name: str,
+        level_id: int,
+        forward: bool,
+        max_steps: int,
+    ):
+    """Load the level and instanciate an environment.
+
+    Args
+    ----
+        :dataset_name:  Dataset from which we will load the level.
+                        Have to be whether 'MicroSokoban' or 'XSokoban'.
+        :level_id:      Number of the level that will be loaded.
+        :forward:       Either we want a forward or a backward mode.
+        :max_steps:     Number of steps before the episode automatically ends.
+
+    Return
+    ------
+        :env:           MacroSokobanEnv instance with the loaded level.
+    """
+    dataset_name = dataset_name.lower()
+    assert dataset_name in ['microsokoban', 'xsokoban'], "Not a valid dataset name"
+
+    if dataset_name == 'microsokoban':
+        board = MicroSokoban_lvl_to_raw(level_id)
+    elif dataset_name == 'xsokoban':
+        board = XSokoban_lvl_to_raw(level_id)
+
+    dim_room, num_boxes, num_gen_steps = param_env_from_board(board)
+    env = MacroSokobanEnv(
+        forward,
+        dim_room,
+        max_steps,
+        num_boxes,
+        None,  # No need to create a new board
+        reset=False  # Do not create a new board
+    )
+    env._load_board(board)  # Load the board and all the depending variables
+
+    return env  # Environment is ready
 
 
 if __name__ == '__main__':
