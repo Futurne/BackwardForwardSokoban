@@ -143,9 +143,12 @@ class SearchTree:
             epsilon: float,
             model: BaseModel,
             seed: int,
-            ):
+        ):
         self.root = Node(env, None, 0, False)
         self.epsilon = epsilon
+        self.max_steps = env.max_steps
+        self.steps_count = 0
+
         self.rng = default_rng(seed)
         self.visited = set()
         self.last_leaf = None  # Final leaf of the episode
@@ -170,14 +173,17 @@ class SearchTree:
         an exterior model can expand them.
         The episode stops once a ending leaf is reach (leaf.done is True).
         """
+        self.steps_count = 0
+
         leaf = self.next_leaf()
         yield leaf
         best_node = leaf
 
-        while not leaf.done and not self.root.is_deadlock:
+        while not leaf.done and not self.root.is_deadlock and self.steps_count < self.max_steps:
             leaf = self.next_leaf()
             yield leaf
             best_node = max(best_node, leaf, key=lambda n: n.value)
+            self.steps_count += 1
 
         if leaf.env._check_if_won():
             self.last_leaf = leaf

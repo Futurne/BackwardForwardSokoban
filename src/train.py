@@ -1,6 +1,7 @@
 """All training functions are defined here.
 """
 import torch
+import numpy as np
 
 import environments
 from models import BaseModel
@@ -49,6 +50,8 @@ def train_on_env(model: BaseModel, env: MacroSokobanEnv, config: dict):
     tree = SearchTree(env, epsilon, model, seed)
     model.estimate(tree.root, gamma)
 
+    losses = []
+
     for leaf_node in tree.episode():
         expand_node(tree, leaf_node, model, gamma)
 
@@ -63,7 +66,9 @@ def train_on_env(model: BaseModel, env: MacroSokobanEnv, config: dict):
             # Backpropagate new model estimations
             tree.update_all_values(model)
 
-    return tree.solution_path()
+            losses.append(loss.cpu().item())
+
+    return tree.solution_path(), np.mean(losses)
 
 
 if __name__ == '__main__':
@@ -82,7 +87,7 @@ if __name__ == '__main__':
         'optimizer': torch.optim.Adam(model.parameters(), lr=1e-3),
     }
 
-    solution = train_on_env(model, env, config)
+    solution, _ = train_on_env(model, env, config)
     print('Solution')
     for node in solution:
         node.env.print()
