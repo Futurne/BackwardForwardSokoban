@@ -2,9 +2,12 @@
 """
 import torch
 
-from models import BaseModel
+import environments
+from models import BaseModel, LinearModel
 from environments import MacroSokobanEnv
 from search_tree import SearchTree, Node
+from features import core_features
+from variables import MAX_MICROSOKOBAN
 
 
 def expand_node(
@@ -63,6 +66,31 @@ def train_on_env(model: BaseModel, env: MacroSokobanEnv, config: dict):
             tree.update_all_values(model)
 
     return tree.solution_path()
+
+
+def train_backward(config: dict) -> LinearModel:
+    """Train a basic linear model on all the backward tasks.
+    It is trained on the MicroSokoban levels.
+    One epoch is a passage through all the levels (155).
+
+    Return the trained linear model.
+    """
+    env = MacroSokobanEnv(forward=False, dim_room=(6, 6), num_boxes=2)
+    feat_size = len(core_features(env, config['gamma']))
+    model = LinearModel(feat_size)
+    optim = torch.optim.Adam(model.parameters(), lr=config['lr'])
+
+    for _ in range(config['epochs']):
+        for level_id in range(1, MAX_MICROSOKOBAN+1):
+            env = environments.from_file(
+                'MicroSokoban',
+                level_id,
+                forward=False,
+                max_steps=config['max_steps'],
+            )
+            train_on_env(model, env, config)
+
+    return model
 
 
 if __name__ == '__main__':
