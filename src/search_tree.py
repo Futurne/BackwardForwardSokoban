@@ -172,11 +172,20 @@ class SearchTree:
         """
         leaf = self.next_leaf()
         yield leaf
-        while not leaf.done:
+        best_node = leaf
+
+        while not leaf.done and not self.root.is_deadlock:
             leaf = self.next_leaf()
             yield leaf
+            best_node = max(best_node, leaf, key=lambda n: n.value)
 
-        self.last_leaf = leaf
+        if leaf.env._check_if_won():
+            self.last_leaf = leaf
+        else:
+            # No solution has been found
+            # We decide that the most valued node
+            # was the closest to a good solution
+            self.last_leaf = best_node
 
     def solution_path(self):
         """Return the solution path from the root node
