@@ -6,7 +6,6 @@ import environments
 from models import BaseModel
 from environments import MacroSokobanEnv
 from search_tree import SearchTree, Node
-from features import core_features
 
 
 def expand_node(

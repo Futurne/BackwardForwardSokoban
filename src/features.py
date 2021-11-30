@@ -22,7 +22,7 @@ def distance(env: MacroSokobanEnv) -> int:
     raw = env.render()
     board, _ = build_board_from_raw(raw)
 
-    if (board != TYPE_LOOKUP['box target']).all():
+    if (board == TYPE_LOOKUP['box target']).sum() == 0:
         return 0  # All box are placed
 
     total_distance = 0

@@ -166,13 +166,21 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
             TYPE_LOOKUP['box target'],
             TYPE_LOOKUP['empty space'],
         }
-        self.room_fixed = np.array([
-            [
-                cell if cell in fixed_values else TYPE_LOOKUP['empty space']
-                for cell in row
-            ]
-            for row in board
-        ])
+        self.room_fixed = []
+        for row in board:
+            n_row = []
+            for cell in row:
+                if cell == TYPE_LOOKUP['box on target']:
+                    cell = TYPE_LOOKUP['box target']
+
+                if cell not in fixed_values:
+                    cell = TYPE_LOOKUP['empty space']
+
+                n_row.append(cell)
+
+            self.room_fixed.append(n_row)
+
+        self.room_fixed = np.array(self.room_fixed)
 
 
 def param_env_from_board(board: np.array):
