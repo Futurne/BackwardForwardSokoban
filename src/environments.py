@@ -160,7 +160,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         self.room_state = board
 
         fixed_values = {
-            TYPE_LOOKUP['walls'],
+            TYPE_LOOKUP['wall'],
             TYPE_LOOKUP['box target'],
             TYPE_LOOKUP['empty space'],
         }
@@ -218,7 +218,7 @@ def from_file(
     elif dataset_name == 'xsokoban':
         board = XSokoban_lvl_to_raw(level_id)
 
-    dim_room, num_boxes, num_gen_steps = param_env_from_board(board)
+    dim_room, num_boxes = param_env_from_board(board)
     env = MacroSokobanEnv(
         forward,
         dim_room,
@@ -234,8 +234,8 @@ def from_file(
 
 if __name__ == '__main__':
     print('Forward MacroSokobanEnv:')
-    env = MacroSokobanEnv(forward=True, dim_room=(6, 6), num_boxes=2)
-    raw = env.reset(render_mode='raw')
+    env = from_file("MicroSokoban", 1, forward=True, max_steps=120)
+    raw = env.render()
     board, player = build_board_from_raw(raw)
     print_board(board, player)
 
@@ -244,7 +244,7 @@ if __name__ == '__main__':
 
     print('\nBackward MacroSokobanEnv:')
     env = MacroSokobanEnv(forward=False, dim_room=(6, 6), num_boxes=2)
-    raw = env.reset(render_mode='raw')
+    raw = env.render()
     board, player = build_board_from_raw(raw)
     print_board(board, player)
 

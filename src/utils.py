@@ -122,10 +122,10 @@ def XSokoban_lvl_to_raw(num_lvl:int) -> np.array:
         'player': '@',
     }
 
-    with open('levels/XSokoban/screen.' + str(num_lvl), 'r') as file1:
+    with open('../levels/XSokoban/screen.' + str(num_lvl), 'r') as file1:
         Lines = file1.readlines()
     height, width = len(Lines),max([len(Lines[k]) for k in range(len(Lines))])-1
-    board = np.zeros((height, width))
+    board = np.zeros((height, width), int)
     k=0
     for line in Lines:
         L=[]
@@ -154,10 +154,10 @@ def MicroSokoban_lvl_to_raw(num_lvl:int) -> np.array:
         'player': '@',
     }
     
-    file1 = open('levels/MicroSokoban/screen.'+str(num_lvl), 'r')
+    file1 = open('../levels/MicroSokoban/screen.'+str(num_lvl), 'r')
     Lines = file1.readlines()
     height, width = len(Lines),max([len(Lines[k]) for k in range(len(Lines))])-1
-    board = np.zeros((height, width))
+    board = np.zeros((height, width), int)
     k=0
     for line in Lines:
         L=[]
