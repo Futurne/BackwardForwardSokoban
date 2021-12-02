@@ -210,7 +210,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         TODO: handle this case.
         """
         if self.room_state[tuple(default_position)] == TYPE_LOOKUP['box on target']:
-            self.player_position = np.argwhere(self.room_state == TYPE_LOOKUP['empty_space'])[0]
+            self.player_position = np.argwhere(self.room_state == TYPE_LOOKUP['empty space'])[0]
         else:
             self.player_position = default_position
 
