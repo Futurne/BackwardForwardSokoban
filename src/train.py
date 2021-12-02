@@ -48,9 +48,10 @@ def train_on_env(model: BaseModel, env: MacroSokobanEnv, config: dict):
     optimizer = config['optimizer']
 
     tree = SearchTree(env, epsilon, model, seed)
-    model.estimate(tree.root, gamma)
+    with torch.no_grad():
+        model.estimate(tree.root, gamma)
 
-    losses = []
+    total_loss = 0
 
     for leaf_node in tree.episode():
         expand_node(tree, leaf_node, model, gamma)
@@ -59,16 +60,19 @@ def train_on_env(model: BaseModel, env: MacroSokobanEnv, config: dict):
             loss = compute_loss(model, leaf_node, gamma)
 
             # Update model
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            # optimizer.zero_grad()
+            # loss.backward()
+            # optimizer.step()
 
             # Backpropagate new model estimations
             tree.update_all_values(model)
 
-            losses.append(loss.cpu().item())
+            total_loss += loss
 
-    return tree.solution_path(), np.mean(losses)
+    if total_loss == 0:
+        return tree.solution_path, None
+
+    return tree.solution_path(), total_loss
 
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@ import numpy as np
 from gym_sokoban.envs import sokoban_env
 
 from utils import print_board, build_board_from_raw
+from utils import connectivity
 from utils import MicroSokoban_lvl_to_raw, XSokoban_lvl_to_raw
 from variables import TYPE_LOOKUP
 from macro_move import macro_moves
@@ -148,13 +149,13 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         """
         return self._check_if_won() or self._check_if_maxsteps()
 
-    def _load_board(self, board: np.array):
+    def _load_board(self, board: np.array, player: np.array):
         """Save the board as the starting point for the environment.
         Set all the depending variables accordingly.
         """
         assert self.dim_room == board.shape, "The board doesn't fit the instance parameters"
 
-        self.player_position = np.argwhere(board == TYPE_LOOKUP['player'])[0]
+        # Init some intern variables
         self.num_env_steps = 0
         self.reward_last = 0
         self.boxes_on_target = np.sum(board == TYPE_LOOKUP['box on target'])
@@ -162,6 +163,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         self.room_state = board
 
 
+        # Create the :room_fixed: array
         fixed_values = {
             TYPE_LOOKUP['wall'],
             TYPE_LOOKUP['box target'],
@@ -183,6 +185,7 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
 
         self.room_fixed = np.array(self.room_fixed)
 
+
         # Backward mode
         if not self.forward:
             # Place every boxes on target
@@ -192,6 +195,26 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
                 TYPE_LOOKUP['empty space']
 
         self.boxes_on_target = (self.room_state == TYPE_LOOKUP['box on target']).sum()
+
+        # Place the player on the board
+        self._place_player(player)
+
+
+    def _place_player(self, default_position: np.array):
+        """Choose where to place the player on the board.
+
+        It is possible that a player default position is on a box target,
+        but in backward mode, this cell is occupied.
+
+        It is also possible that the player is stucked in a deadlock (in backward mode).
+        TODO: handle this case.
+        """
+        if self.room_state[tuple(default_position)] == TYPE_LOOKUP['box on target']:
+            self.player_position = np.argwhere(self.room_state == TYPE_LOOKUP['empty_space'])[0]
+        else:
+            self.player_position = default_position
+
+        self.room_state[tuple(self.player_position)] = TYPE_LOOKUP['player']
 
 
 def param_env_from_board(board: np.array):
@@ -235,7 +258,7 @@ def from_file(
     assert dataset_name in ['microsokoban', 'xsokoban'], "Not a valid dataset name"
 
     if dataset_name == 'microsokoban':
-        board = MicroSokoban_lvl_to_raw(level_id)
+        board, player = MicroSokoban_lvl_to_raw(level_id)
     elif dataset_name == 'xsokoban':
         board = XSokoban_lvl_to_raw(level_id)
 
@@ -248,14 +271,14 @@ def from_file(
         None,  # No need to create a new board
         reset=False  # Do not create a new board
     )
-    env._load_board(board)  # Load the board and all the depending variables
+    env._load_board(board, player)  # Load the board and all the depending variables
 
     return env  # Environment is ready
 
 
 if __name__ == '__main__':
     print('Forward MacroSokobanEnv:')
-    env = from_file("MicroSokoban", 1, forward=True, max_steps=120)
+    env = from_file("MicroSokoban", 40, forward=True, max_steps=120)
     raw = env.render()
     board, player = build_board_from_raw(raw)
     print_board(board, player)

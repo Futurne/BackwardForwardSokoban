@@ -182,6 +182,7 @@ class SearchTree:
         while not leaf.done and not self.root.is_deadlock and self.steps_count < self.max_steps:
             leaf = self.next_leaf()
             yield leaf
+
             best_node = max(best_node, leaf, key=lambda n: n.value)
             self.steps_count += 1
 

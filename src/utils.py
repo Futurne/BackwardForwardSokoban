@@ -120,6 +120,7 @@ def XSokoban_lvl_to_raw(num_lvl:int) -> np.array:
         'box on target': '*',
         'box not on target': '$',
         'player': '@',
+        'player on target': '+',
     }
 
     with open('../levels/XSokoban/screen.' + str(num_lvl), 'r') as file1:
@@ -130,12 +131,20 @@ def XSokoban_lvl_to_raw(num_lvl:int) -> np.array:
     for line in Lines:
         L=[]
         for elt in line:
+            # Check for player coords
+            if elt == TYPE_LOOKUP_XSOKOBAN['player on target']:
+                elt = TYPE_LOOKUP_XSOKOBAN['box target']
+                player = np.array([k, len(L)])
+            elif elt == TYPE_LOOKUP_XSOKOBAN['player']:
+                elt = TYPE_LOOKUP_XSOKOBAN['empty space']
+                player = np.array([k, len(L)])
+
             for key,val in TYPE_LOOKUP_XSOKOBAN.items():
                 if elt == val:
                     L.append(TYPE_LOOKUP[key])
         board[k]=L+[TYPE_LOOKUP['wall'] for k in range(width-len(L))]
         k+=1
-    return board
+    return board, player
 
 
 def MicroSokoban_lvl_to_raw(num_lvl:int) -> np.array:
@@ -152,6 +161,7 @@ def MicroSokoban_lvl_to_raw(num_lvl:int) -> np.array:
         'box on target': '*',
         'box not on target': '$',
         'player': '@',
+        'player on target': '+',
     }
     
     file1 = open('../levels/MicroSokoban/screen.'+str(num_lvl), 'r')
@@ -162,12 +172,20 @@ def MicroSokoban_lvl_to_raw(num_lvl:int) -> np.array:
     for line in Lines:
         L=[]
         for elt in line:
+            # Check for player coords
+            if elt == TYPE_LOOKUP_XSOKOBAN['player on target']:
+                elt = TYPE_LOOKUP_XSOKOBAN['box target']
+                player = np.array([k, len(L)])
+            elif elt == TYPE_LOOKUP_XSOKOBAN['player']:
+                elt = TYPE_LOOKUP_XSOKOBAN['empty space']
+                player = np.array([k, len(L)])
+
             for key,val in TYPE_LOOKUP_XSOKOBAN.items():
                 if elt == val:
                     L.append(TYPE_LOOKUP[key])
         board[k]=L+[TYPE_LOOKUP['wall'] for k in range(width-len(L))]
         k+=1
-    return board
+    return board, player
 
 
 if __name__ == '__main__':
