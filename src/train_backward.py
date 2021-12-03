@@ -12,7 +12,7 @@ from models import LinearModel
 from features import core_features
 from variables import MAX_MICROSOKOBAN
 
-MAX_MICROSOKOBAN = 10
+#MAX_MICROSOKOBAN = 10
 
 
 def train_backward(config: dict) -> LinearModel:
@@ -51,6 +51,8 @@ def train_backward(config: dict) -> LinearModel:
     for e in trange(config['epochs'], desc='Epochs'):
         total_loss = 0
         rng.shuffle(levels)
+        winrate = 0
+        mean_steps = 0
         for level_id in trange(1, MAX_MICROSOKOBAN+1, desc='Levels'):
             env = environments.from_file(
                 'MicroSokoban',
@@ -58,21 +60,23 @@ def train_backward(config: dict) -> LinearModel:
                 forward=False,
                 max_steps=config['max_steps'],
             )
-            _, loss = train_on_env(model, env, config)
+            solution, loss = train_on_env(model, env, config)
 
-            if loss:
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            # Keep trying while we lose and while there is another starting position to try
+            while not solution[-1].env._check_if_won() and env.starting_pos:
+                env.try_again()
+                solution, loss = train_on_env(model, env, config)
 
-                total_loss += loss.cpu().item()
-            else:
-                tqdm.write(f'Level error: {level_id}')
+            total_loss += loss
+            mean_steps += len(solution)
+            winrate += int(solution[-1].env._check_if_won())
 
         scheduler.step()
 
         wb.log({
             'loss': total_loss,
+            'mean steps': mean_steps / MAX_MICROSOKOBAN,
+            'winrate': winrate / MAX_MICROSOKOBAN,
         })
 
     return model
@@ -84,12 +88,12 @@ if __name__ == '__main__':
         'max_steps': 50,
         'epsilon': 0.1,
         'seed': 0,
-        'epochs': 10,
-        'lr': 1e-2,
+        'epochs': 100,
+        'lr': 1e-4,
     }
 
     with wb.init(
-            project='test',
+            project='sokoban',
             entity='pierrotlc',
             group='backward training',
             config=config,

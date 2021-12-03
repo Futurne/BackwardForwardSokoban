@@ -43,7 +43,9 @@ def build_board_from_raw(raw_board: np.array) -> (np.array, np.array):
     board += ((goals ^ boxes) & goals) * TYPE_LOOKUP['box target']  # Find target without boxes
     board += ((boxes ^ goals) & boxes) * TYPE_LOOKUP['box not on target']  # Find boxes without target
 
-    player_coords = np.argwhere(player == 1)[0]
+    player_coords = np.argwhere(player == 1)
+    if len(player_coords) != 0:
+        player_coords = player_coords[0]
     return board, player_coords
 
 

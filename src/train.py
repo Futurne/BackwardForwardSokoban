@@ -60,17 +60,14 @@ def train_on_env(model: BaseModel, env: MacroSokobanEnv, config: dict):
             loss = compute_loss(model, leaf_node, gamma)
 
             # Update model
-            # optimizer.zero_grad()
-            # loss.backward()
-            # optimizer.step()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
             # Backpropagate new model estimations
             tree.update_all_values(model)
 
-            total_loss += loss
-
-    if total_loss == 0:
-        return tree.solution_path, None
+            total_loss += loss.cpu().item()
 
     return tree.solution_path(), total_loss
 

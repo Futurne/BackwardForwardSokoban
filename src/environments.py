@@ -126,6 +126,19 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
         self.states = states  # Save the computations for future calls
         return self.states
 
+    def try_again(self):
+        """Reset the game and try again.
+        It places the player at the next starting position if any.
+        It is useful in backward mode only, because we can get stuck in a deadlock.
+        """
+        assert not self.forward, "Only in backward mode"
+        assert self.starting_pos, "No more starting position!"
+
+        self.room_state[tuple(self.player_position)] = \
+                self.room_fixed[tuple(self.player_position)]
+        self._place_player(None)
+        self.states = None
+
     def _check_if_all_boxes_not_on_target(self) -> bool:
         """True if all boxes are NOT on any target.
         This is the backward goal of the agent.
@@ -194,6 +207,9 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
             self.room_state[self.room_state == TYPE_LOOKUP['box not on target']] = \
                 TYPE_LOOKUP['empty space']
 
+            starting_pos = connectivity(self)
+            self.starting_pos = [cells.pop() for cells in starting_pos]
+
         self.boxes_on_target = (self.room_state == TYPE_LOOKUP['box on target']).sum()
 
         # Place the player on the board
@@ -205,14 +221,14 @@ class MacroSokobanEnv(sokoban_env.SokobanEnv):
 
         It is possible that a player default position is on a box target,
         but in backward mode, this cell is occupied.
-
         It is also possible that the player is stucked in a deadlock (in backward mode).
-        TODO: handle this case.
+        To handle those cases, we place the player at the last starting_pos available.
+        It is possible to call this function multiple times to try all the starting_pos possibles.
         """
-        if self.room_state[tuple(default_position)] == TYPE_LOOKUP['box on target']:
-            self.player_position = np.argwhere(self.room_state == TYPE_LOOKUP['empty space'])[0]
-        else:
+        if self.forward:
             self.player_position = default_position
+        else:
+            self.player_position = self.starting_pos.pop()
 
         self.room_state[tuple(self.player_position)] = TYPE_LOOKUP['player']
 
