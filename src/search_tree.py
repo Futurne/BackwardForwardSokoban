@@ -207,12 +207,12 @@ class SearchTree:
                  if node.children == []]
         return leafs
 
-    def update_all_values(self, model: BaseModel):
+    def update_all_values(self, model: BaseModel, **kwagrs: dict):
         """Backpropagate all the leaf values up to the root node.
         It makes sure that every leafs of the tree has an updated value.
         """
         for leaf_node in self.leafs():
-            model.estimate(leaf_node, gamma=0.9)  # Eval leaf's value
+            model.estimate(leaf_node, **kwagrs)  # Eval leaf's value
 
         # Need to backpropagate the deepest nodes first!
         for node in self.priority_queue[::-1]:
