@@ -69,3 +69,79 @@ def core_features(env: MacroSokobanEnv, gamma: float) -> list[float]:
         gamma2(env, gamma),
         len(connectivity(env)) / env.num_boxes,
     ]
+
+
+#################
+# Hint features #
+#################
+def find_box_pos(board: np.array) -> set[tuple]:
+    """find all box positions and put their coordinates in a set.
+    """
+    positions = np.argwhere(
+        board == TYPE_LOOKUP['box on target'] |\
+        board == TYPE_LOOKUP['box not on target']
+    ).tolist()
+    positions = set([tuple(p) for p in positions])
+    return positions
+
+
+def overlap(env: MacroSokobanEnv, solution: list) -> float:
+    """Maximum number of boxes on the same position
+    in the current board as any other board in the backward solution.
+    """
+    current_board = env.render()
+    current_board, _ = build_board_from_raw(current_board)
+    current_positions = find_box_pos(current_board)
+    total_boxes = len(current_positions)
+
+    box_positions = []
+    for node in solution:
+        board = node.env.render()
+        board, _ = build_board_from_raw(board)
+        box_positions.append(find_box_pos(board))
+
+    max_overlap = 0
+    for positions in box_positions:
+        overlap = len(positions & current_positions)
+        max_overlap = max(max_overlap, overlap)
+
+    return max_overlap / total_boxes
+
+
+def find_box_on_target(board: np.array) -> set[tuple]:
+    """Return the set containing all the box positions
+    that are on their target.
+    """
+    positions = np.argwhere(
+        board == TYPE_LOOKUP['box on target']
+    ).tolist()
+    positions = set([tuple(p) for p in positions])
+    return positions
+
+
+def perm(env: MacroSokobanEnv, solution: list) -> float:
+    """Count the number of boxes well placed on their target,
+    according to the removing order found in the backward solution.
+    """
+    current_board = env.render()
+    current_board, _ = build_board_from_raw(current_board)
+    current_positions = find_box_on_target(current_board)
+    total_boxes = len(find_box_pos(current_board))
+
+    box_positions = []
+    for node in solution[::-1]:
+        board = node.env.render()
+        board, _ = build_board_from_raw(board)
+        box_positions.append(find_box_on_target(board))
+
+    perm = 0
+    while perm < len(box_positions) and current_positions == box_positions[perm]:
+        perm += 1
+    return perm / total_boxes
+
+
+def all_features(env: MacroSokobanEnv, gamma: float, solution: list) -> list[float]:
+    """Return all core features and the hint features for the forward agent.
+    The solution is the backward solution found by the backward agent.
+    """
+    return core_features(env, gamma) + [overlap(env, solution), perm(env, solution)]
