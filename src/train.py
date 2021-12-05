@@ -109,7 +109,7 @@ def train_on_env(
 
             total_loss += loss.cpu().item()
 
-    return tree.solution_path(), total_loss / tree.steps_count
+    return tree.solution_path(), total_loss / (tree.steps_count + 1)
 
 
 if __name__ == '__main__':

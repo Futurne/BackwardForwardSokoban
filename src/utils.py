@@ -1,6 +1,7 @@
 """Bunch of utils functions for the game of Sokoban.
 """
 import numpy as np
+from numba import njit, jit
 
 from variables import TYPE_LOOKUP
 
@@ -22,12 +23,12 @@ def print_board(board: np.array, player: np.array=None):
         print('\n', end='')
 
 
-def yield_neighbours(cell: (int, int)):
+@njit(inline='always')
+def yield_neighbours(cell: (int, int)) -> list:
     """Yields all the neighbours around the cell.
     """
     x, y = cell
-    for n in [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]:
-        yield n
+    return [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
 
 
 def build_board_from_raw(raw_board: np.array) -> (np.array, np.array):
@@ -49,6 +50,7 @@ def build_board_from_raw(raw_board: np.array) -> (np.array, np.array):
     return board, player_coords
 
 
+@jit(nopython=False)
 def find_neighbours(cell: tuple, available_cells: set[tuple], remove_cells: bool) -> list[tuple]:
     """Find all neighbours in the `available_cells`.
 

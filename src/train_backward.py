@@ -11,7 +11,7 @@ from train import train_on_env, eval_on_env
 from models import LinearModel
 from variables import MAX_MICROSOKOBAN
 
-MAX_MICROSOKOBAN = 10
+# MAX_MICROSOKOBAN = 10
 
 
 def train_backward(config: dict) -> LinearModel:
@@ -36,7 +36,6 @@ def train_backward(config: dict) -> LinearModel:
     rng = default_rng(config['seed'])
     levels = [l for l in range(1, MAX_MICROSOKOBAN+1)]
 
-    env = MacroSokobanEnv(forward=False, dim_room=(6, 6), num_boxes=2)
     model = LinearModel(n_features=5)
     model.train()
 
@@ -52,10 +51,10 @@ def train_backward(config: dict) -> LinearModel:
         rng.shuffle(levels)
         winrate = 0
         mean_steps = 0
-        for level_id in trange(1, MAX_MICROSOKOBAN+1, desc='Levels'):
+        for level_id in trange(MAX_MICROSOKOBAN, desc='Levels'):
             env = environments.from_file(
                 'MicroSokoban',
-                level_id,
+                levels[level_id],
                 forward=False,
                 max_steps=config['max_steps'],
             )
@@ -67,7 +66,7 @@ def train_backward(config: dict) -> LinearModel:
                 solution, loss = train_on_env(model, env, config)
 
             total_loss += loss
-            mean_steps += len(solution)
+            mean_steps += len(solution) if solution[-1].env._check_if_won() else config['max_steps']
             winrate += int(solution[-1].env._check_if_won())
 
         scheduler.step()
@@ -123,11 +122,11 @@ def train_forward(config: dict) -> LinearModel:
         rng.shuffle(levels)
         winrate = 0
         mean_steps = 0
-        for level_id in trange(1, MAX_MICROSOKOBAN+1, desc='Levels'):
+        for level_id in trange(MAX_MICROSOKOBAN, desc='Levels'):
             # BACWARD MODE
             env = environments.from_file(
                 'MicroSokoban',
-                level_id,
+                levels[level_id],
                 forward=False,
                 max_steps=config['max_steps'],
             )
@@ -142,14 +141,14 @@ def train_forward(config: dict) -> LinearModel:
             backward_sol = solution
             env = environments.from_file(
                 'MicroSokoban',
-                level_id,
+                levels[level_id],
                 forward=True,
                 max_steps=config['max_steps'],
             )
             solution, loss = train_on_env(model, env, config, backward_sol=backward_sol)
 
             total_loss += loss
-            mean_steps += len(solution)
+            mean_steps += len(solution) if solution[-1].env._check_if_won() else config['max_steps']
             winrate += int(solution[-1].env._check_if_won())
 
         scheduler.step()
@@ -174,10 +173,10 @@ if __name__ == '__main__':
         config = {
             'gamma': 0.9,
             'max_steps': 50,
-            'epsilon': 0.1,
+            'epsilon': 0.01,
             'seed': 0,
             'epochs': 100,
-            'lr': 1e-4,
+            'lr': 1e-2,
         }
 
         with wb.init(
@@ -198,10 +197,10 @@ if __name__ == '__main__':
             'backward_model': backward_model,
             'gamma': 0.9,
             'max_steps': 100,
-            'epsilon': 0.1,
+            'epsilon': 0.01,
             'seed': 0,
             'epochs': 10,
-            'lr': 1e-4,
+            'lr': 1e-2,
         }
 
         with wb.init(
