@@ -43,6 +43,38 @@ def compute_loss(
     return loss
 
 
+def eval_on_env(
+        model: BaseModel,
+        env: MacroSokobanEnv,
+        config: dict,
+        backward_sol: list = None,
+    ):
+    """Evaluate the model on the given environment.
+    It does the same thing as the training loop, without training the model.
+    """
+    epsilon, seed, gamma = config['epsilon'], config['seed'], config['gamma']
+
+    tree = SearchTree(env, epsilon, seed)
+    with torch.no_grad():
+        model.estimate(tree.root, gamma=gamma, backward_solution=backward_sol)
+
+    total_loss = 0
+
+    with torch.no_grad():
+        for leaf_node in tree.episode():
+            expand_node(tree, leaf_node, model, gamma, backward_sol)
+
+            if leaf_node.children:
+                loss = compute_loss(model, leaf_node, gamma, backward_sol)
+
+                # Backpropagate new model estimations
+                tree.update_all_values(model, gamma=gamma, backward_solution=backward_sol)
+
+                total_loss += loss.cpu().item()
+
+    return tree.solution_path(), total_loss / (tree.steps_count + 1)
+
+
 def train_on_env(
         model: BaseModel,
         env: MacroSokobanEnv,
@@ -55,7 +87,7 @@ def train_on_env(
     epsilon, seed, gamma = config['epsilon'], config['seed'], config['gamma']
     optimizer = config['optimizer']
 
-    tree = SearchTree(env, epsilon, model, seed)
+    tree = SearchTree(env, epsilon, seed)
     with torch.no_grad():
         model.estimate(tree.root, gamma=gamma, backward_solution=backward_sol)
 

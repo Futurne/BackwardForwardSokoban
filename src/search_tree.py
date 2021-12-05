@@ -141,7 +141,6 @@ class SearchTree:
             self,
             env: MacroSokobanEnv,
             epsilon: float,
-            model: BaseModel,
             seed: int,
         ):
         self.root = Node(env, None, 0, False)

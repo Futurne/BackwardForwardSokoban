@@ -78,8 +78,8 @@ def find_box_pos(board: np.array) -> set[tuple]:
     """find all box positions and put their coordinates in a set.
     """
     positions = np.argwhere(
-        board == TYPE_LOOKUP['box on target'] |\
-        board == TYPE_LOOKUP['box not on target']
+        (board == TYPE_LOOKUP['box on target']) |\
+        (board == TYPE_LOOKUP['box not on target'])
     ).tolist()
     positions = set([tuple(p) for p in positions])
     return positions
