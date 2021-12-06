@@ -5,6 +5,7 @@ Theses macro-moves are equivalent to a multiple serie of movements,
 but are much more efficient for the search tree.
 """
 import numpy as np
+from numba import jit
 
 from utils import find_neighbours, yield_neighbours, print_board
 from variables import TYPE_LOOKUP
@@ -34,6 +35,7 @@ def check_push(
         return False
 
     return True
+
 
 def check_pull(
     board: np.array,

@@ -31,6 +31,12 @@ def yield_neighbours(cell: (int, int)) -> list:
     return [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
 
 
+EMPTY = TYPE_LOOKUP['empty space']
+WALL = TYPE_LOOKUP['wall']
+BOX_ON_TARGET = TYPE_LOOKUP['box on target']
+BOX_TARGET = TYPE_LOOKUP['box target']
+BOX_NOT_ON_TARGET = TYPE_LOOKUP['box not on target']
+@jit(forceobj=True, inline='always')
 def build_board_from_raw(raw_board: np.array) -> (np.array, np.array):
     """Merge the differents layers of the raw board into a single 2D board.
     Also returns the player coordinates.
@@ -38,11 +44,11 @@ def build_board_from_raw(raw_board: np.array) -> (np.array, np.array):
     The number corresponding of each type of cell is given by `variables.TYPE_LOOKUP`.
     """
     walls, goals, boxes, player = raw_board
-    board = ((walls | goals | boxes) == 0) * TYPE_LOOKUP['empty space']
-    board += (walls == 1) * TYPE_LOOKUP['wall']
-    board += (goals & boxes) * TYPE_LOOKUP['box on target']  # Find boxes and target
-    board += ((goals ^ boxes) & goals) * TYPE_LOOKUP['box target']  # Find target without boxes
-    board += ((boxes ^ goals) & boxes) * TYPE_LOOKUP['box not on target']  # Find boxes without target
+    board = ((walls | goals | boxes) == 0) * EMPTY
+    board += (walls == 1) * WALL
+    board += (goals & boxes) * BOX_ON_TARGET  # Find boxes and target
+    board += ((goals ^ boxes) & goals) * BOX_TARGET  # Find target without boxes
+    board += ((boxes ^ goals) & boxes) * BOX_NOT_ON_TARGET  # Find boxes without target
 
     player_coords = np.argwhere(player == 1)
     if len(player_coords) != 0:
@@ -50,7 +56,7 @@ def build_board_from_raw(raw_board: np.array) -> (np.array, np.array):
     return board, player_coords
 
 
-@jit(nopython=False)
+@jit(nopython=False, forceobj=True)
 def find_neighbours(cell: tuple, available_cells: set[tuple], remove_cells: bool) -> list[tuple]:
     """Find all neighbours in the `available_cells`.
 
