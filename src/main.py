@@ -7,7 +7,7 @@ from tqdm import tqdm, trange  # Loading bar
 
 import environments
 from environments import MacroSokobanEnv
-from train import train_on_env, eval_on_env
+from train import train_on_env, eval_on_env, train_on_solution
 from models import LinearModel
 from variables import MAX_MICROSOKOBAN
 
@@ -37,6 +37,8 @@ def train_backward(config: dict) -> LinearModel:
     levels = [l for l in range(1, MAX_MICROSOKOBAN+1)]
 
     model = LinearModel(n_features=5)
+    if config['reload']:
+        model.load_state_dict(torch.load('backward.pth'))
     model.train()
 
     config['optimizer'] = torch.optim.SGD(model.parameters(), lr=config['lr'])
@@ -66,8 +68,15 @@ def train_backward(config: dict) -> LinearModel:
                 solution, loss = train_on_env(model, env, config)
 
             total_loss += loss
+
+            # Replay buffer
+            loss = train_on_solution(model, solution, config, None)
+            total_loss += loss
+
             mean_steps += len(solution) if solution[-1].env._check_if_won() else config['max_steps']
             winrate += int(solution[-1].env._check_if_won())
+
+            torch.save(model.state_dict(), 'backward.pth')
 
         scheduler.step()
 
@@ -106,7 +115,10 @@ def train_forward(config: dict) -> LinearModel:
     levels = [l for l in range(1, MAX_MICROSOKOBAN+1)]
 
     model = LinearModel(n_features=7)
+    if config['reload']:
+        model.load_state_dict(torch.load('forward.pth'))
     model.train()
+
     backward_model = config['backward_model']
     backward_model.eval()
 
@@ -137,6 +149,7 @@ def train_forward(config: dict) -> LinearModel:
                 env.try_again()
                 solution, _ = eval_on_env(backward_model, env, config)
 
+
             # FORWARD MODE
             backward_sol = solution
             env = environments.from_file(
@@ -146,10 +159,16 @@ def train_forward(config: dict) -> LinearModel:
                 max_steps=config['max_steps'],
             )
             solution, loss = train_on_env(model, env, config, backward_sol=backward_sol)
-
             total_loss += loss
+
+            # Replay buffer
+            loss = train_on_solution(model, solution, config, backward_sol)
+            total_loss += loss
+
             mean_steps += len(solution) if solution[-1].env._check_if_won() else config['max_steps']
             winrate += int(solution[-1].env._check_if_won())
+
+            torch.save(model.state_dict(), 'forward.pth')
 
         scheduler.step()
 
@@ -165,18 +184,28 @@ def train_forward(config: dict) -> LinearModel:
 if __name__ == '__main__':
     import sys
 
-    if len(sys.argv) != 2 or sys.argv[1] not in ('backward', 'forward'):
-        print(f'Usage: python3 {sys.argv[0]} [backward|forward]')
+    if len(sys.argv) < 2 or sys.argv[1] not in ('backward', 'forward'):
+        print(f'Usage: python3 {sys.argv[0]} [backward|forward] [reload]')
         sys.exit(0)
+
+    reload_model = False
+    if len(sys.argv) == 3:
+        if sys.argv[2] == 'reload':
+            reload_model = True
+            print('Reloading the model')
+        else:
+            print(f'Usage: python3 {sys.argv[0]} [backward|forward] [reload]')
+            sys.exit(0)
 
     if sys.argv[1] == 'backward':
         config = {
-            'gamma': 0.9,
+            'gamma': 0.99,
             'max_steps': 50,
-            'epsilon': 0.01,
+            'epsilon': 0.1,
             'seed': 0,
             'epochs': 100,
             'lr': 1e-2,
+            'reload': reload_model,
         }
 
         with wb.init(
@@ -195,12 +224,13 @@ if __name__ == '__main__':
 
         config = {
             'backward_model': backward_model,
-            'gamma': 0.9,
+            'gamma': 0.99,
             'max_steps': 100,
             'epsilon': 0.01,
             'seed': 0,
-            'epochs': 10,
-            'lr': 1e-2,
+            'epochs': 100,
+            'lr': 1e-3,
+            'reload': reload_model,
         }
 
         with wb.init(

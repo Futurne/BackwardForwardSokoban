@@ -5,7 +5,7 @@ and update each states values accordingly.
 The leaf can be choosen in an epsilon-greedy fashion,
 useful for the learning procedure.
 """
-import heapq  # priority queue
+import bisect
 from copy import deepcopy
 
 import torch
@@ -64,7 +64,12 @@ class Node:
             # Create and add the new node to the boards and priority queue
             node = Node(env, self, reward, done)
             tree.add_to_visited(env)
-            heapq.heappush(tree.priority_queue, node)
+
+            # heapq.heappush(tree.priority_queue, node)
+            bisect.insort(tree.priority_queue, node)
+            curr_depths = [n.depth for n in tree.priority_queue]
+            assert curr_depths == [n.depth for n in sorted(tree.priority_queue)]
+
             self.children.append(node)
 
         # Check for deadlocks
@@ -73,7 +78,7 @@ class Node:
                 child.deadlock_removal(tree)
         else:
             # This node couldn't expand to childs => he's useless
-            # This can happen if all its possible childs are already in the `tree.boards`
+            # This can happen if all its possible childs are already visited
             self.is_deadlock = True
             self.deadlock_removal(tree)
 
@@ -95,9 +100,9 @@ class Node:
             # Random node
             return rng.choice(valid_childs)
 
-        return max(valid_childs, key=lambda child: child.value)
+        return max(valid_childs, key=lambda child: child.value + child.reward)
 
-    def backprop(self, gamma: float=1):
+    def backprop(self, gamma: float):
         """Update this node's value based on its childs.
         """
         if self.children == []:
@@ -115,7 +120,7 @@ class Node:
         if self.children and all([child.is_deadlock for child in self.children]):
             self.is_deadlock = True
 
-        # Remove the node from the priority queue if necessary
+        # Remove the node from the priority queue since the node is useless
         if self.is_deadlock and self in tree.priority_queue:
             tree.priority_queue.remove(self)
 
@@ -153,7 +158,6 @@ class SearchTree:
         self.last_leaf = None  # Final leaf of the episode
 
         self.add_to_visited(self.root.env)
-        raw = np.array(env.render())
         self.priority_queue = [self.root]
 
     def next_leaf(self):
@@ -214,8 +218,8 @@ class SearchTree:
             model.estimate(leaf_node, **kwagrs)  # Eval leaf's value
 
         # Need to backpropagate the deepest nodes first!
-        for node in self.priority_queue[::-1]:
-            node.backprop()
+        for node in reversed(self.priority_queue):
+            node.backprop(gamma=kwagrs['gamma'])
 
     @staticmethod
     def _board_to_str(board: np.array) -> str:
